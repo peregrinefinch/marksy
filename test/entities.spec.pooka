@@ -1,0 +1,38 @@
+// SPDX-License-Identifier: Apache-2.0
+
+module entities_test
+
+import marksy/entities
+import marksy/text
+import pooka/file
+import pooka/json
+import pooka/json/decode
+import pooka/list
+import pooka/string
+import poke/should
+
+test "all 2125 official semicolon-terminated HTML entity names decode exactly" {
+  let source = file.read("test/fixtures/entities/entities.json") |> should.be_ok()
+  let assert json.JObject(entries) = json.decode(source) |> should.be_ok()
+  let required = list.filter(entries, fn(entry) {
+    string.ends_with(entry.0, ";")
+  })
+  should.equal(list.length(required), 2125)
+  list.each(required, fn(entry) {
+    let expected = decode.field("characters", decode.string()).run(entry.1) |> should.be_ok()
+    let input = entry.0 |> string.drop_start(1) |> text.chars()
+    should.equal(entities.read(input), Some(#(expected, [])))
+  })
+}
+
+test "legacy HTML entity spellings without semicolons stay literal" {
+  should.equal(entities.read(text.chars("copy")), None)
+  should.equal(entities.read(text.chars("amp ")), None)
+}
+
+test "multi-scalar entity values preserve combining characters" {
+  should.equal(
+    entities.read(text.chars("ngE;tail")),
+    Some(#("≧\u{338}", ["t", "a", "i", "l"]))
+  )
+}

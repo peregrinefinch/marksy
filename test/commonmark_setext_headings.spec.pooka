@@ -1,0 +1,228 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+// Cases from CommonMark 0.31.2. The upstream expected HTML is unchanged.
+// Skipped cases are known gaps, not accepted variations of the standard.
+module commonmark_setext_headings_test
+
+import marksy
+import marksy/html
+import poke/should
+
+test "CommonMark 80: Setext headings" {
+  let source = "Foo *bar*\n=========\n\nFoo *bar*\n---------\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<h1>Foo <em>bar</em></h1>\n<h2>Foo <em>bar</em></h2>\n")
+}
+
+test "CommonMark 81: Setext headings" {
+  let source = "Foo *bar\nbaz*\n====\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<h1>Foo <em>bar\nbaz</em></h1>\n")
+}
+
+test "CommonMark 82: Setext headings" {
+  let source = "  Foo *bar\nbaz*\t\n====\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<h1>Foo <em>bar\nbaz</em></h1>\n")
+}
+
+test "CommonMark 83: Setext headings" {
+  let source = "Foo\n-------------------------\n\nFoo\n=\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<h2>Foo</h2>\n<h1>Foo</h1>\n")
+}
+
+test "CommonMark 84: Setext headings" {
+  let source = "   Foo\n---\n\n  Foo\n-----\n\n  Foo\n  ===\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<h2>Foo</h2>\n<h2>Foo</h2>\n<h1>Foo</h1>\n")
+}
+
+test "CommonMark 85: Setext headings" {
+  let source = "    Foo\n    ---\n\n    Foo\n---\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>Foo\n---\n\nFoo\n</code></pre>\n<hr />\n")
+}
+
+test "CommonMark 86: Setext headings" {
+  let source = "Foo\n   ----      \n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<h2>Foo</h2>\n")
+}
+
+test "CommonMark 87: Setext headings" {
+  let source = "Foo\n    ---\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>Foo\n---</p>\n")
+}
+
+test "CommonMark 88: Setext headings" {
+  let source = "Foo\n= =\n\nFoo\n--- -\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>Foo\n= =</p>\n<p>Foo</p>\n<hr />\n")
+}
+
+test "CommonMark 89: Setext headings" {
+  let source = "Foo  \n-----\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<h2>Foo</h2>\n")
+}
+
+test "CommonMark 90: Setext headings" {
+  let source = "Foo\\\n----\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<h2>Foo\\</h2>\n")
+}
+
+test "CommonMark 91: Setext headings" {
+  let source = "`Foo\n----\n`\n\n<a title=\"a lot\n---\nof dashes\"/>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<h2>`Foo</h2>\n<p>`</p>\n<h2>&lt;a title=&quot;a lot</h2>\n<p>of dashes&quot;/&gt;</p>\n"
+  )
+}
+
+test "CommonMark 92: Setext headings" {
+  let source = "> Foo\n---\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<blockquote>\n<p>Foo</p>\n</blockquote>\n<hr />\n")
+}
+
+test "CommonMark 93: Setext headings" {
+  let source = "> foo\nbar\n===\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<blockquote>\n<p>foo\nbar\n===</p>\n</blockquote>\n")
+}
+
+test "CommonMark 94: Setext headings" {
+  let source = "- Foo\n---\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<ul>\n<li>Foo</li>\n</ul>\n<hr />\n")
+}
+
+test "CommonMark 95: Setext headings" {
+  let source = "Foo\nBar\n---\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<h2>Foo\nBar</h2>\n")
+}
+
+test "CommonMark 96: Setext headings" {
+  let source = "---\nFoo\n---\nBar\n---\nBaz\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<hr />\n<h2>Foo</h2>\n<h2>Bar</h2>\n<p>Baz</p>\n")
+}
+
+test "CommonMark 97: Setext headings" {
+  let source = "\n====\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>====</p>\n")
+}
+
+test "CommonMark 98: Setext headings" {
+  let source = "---\n---\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<hr />\n<hr />\n")
+}
+
+test "CommonMark 99: Setext headings" {
+  let source = "- foo\n-----\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<ul>\n<li>foo</li>\n</ul>\n<hr />\n")
+}
+
+test "CommonMark 100: Setext headings" {
+  let source = "    foo\n---\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>foo\n</code></pre>\n<hr />\n")
+}
+
+test "CommonMark 101: Setext headings" {
+  let source = "> foo\n-----\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<blockquote>\n<p>foo</p>\n</blockquote>\n<hr />\n")
+}
+
+test "CommonMark 102: Setext headings" {
+  let source = "\\> foo\n------\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<h2>&gt; foo</h2>\n")
+}
+
+test "CommonMark 103: Setext headings" {
+  let source = "Foo\n\nbar\n---\nbaz\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>Foo</p>\n<h2>bar</h2>\n<p>baz</p>\n")
+}
+
+test "CommonMark 104: Setext headings" {
+  let source = "Foo\nbar\n\n---\n\nbaz\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>Foo\nbar</p>\n<hr />\n<p>baz</p>\n")
+}
+
+test "CommonMark 105: Setext headings" {
+  let source = "Foo\nbar\n* * *\nbaz\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>Foo\nbar</p>\n<hr />\n<p>baz</p>\n")
+}
+
+test "CommonMark 106: Setext headings" {
+  let source = "Foo\nbar\n\\---\nbaz\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>Foo\nbar\n---\nbaz</p>\n")
+}

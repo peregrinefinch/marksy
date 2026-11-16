@@ -1,0 +1,227 @@
+// SPDX-License-Identifier: Apache-2.0
+
+//// Angle brackets can enclose an address or a piece of HTML. Recognise their
+//// grammar before choosing either: `<three birds>` is ordinary text, whereas
+//// `<https://example.com>` has a destination and an HTML tag has attributes.
+module angle
+
+import marksy/text
+import pooka/list
+import pooka/string
+
+class Content {}
+
+class Raw(value: String, rest: List(String)) is Content
+
+class Address(label: String, destination: String, rest: List(String)) is Content
+
+/// The opening `<` has already been consumed by the inline reader.
+read(chars: List(String)) -> Option(Content) {
+  match _special_end(chars) {
+    Some(ending) -> _through(chars, text.chars(ending), [])
+    None -> _ordinary(chars)
+  }
+}
+
+_ordinary(chars: List(String)) -> Option(Content) {
+  match _until(chars, [], "") {
+    None -> None
+    Some(found) -> {
+      let value = found.0
+      match _uri(value) {
+        True -> Some(Address(value, value, found.1))
+        False -> match _email(value) {
+          True -> Some(Address(value, "mailto:" + value, found.1))
+          False -> match _tag(value) {
+            True -> Some(Raw("<" + value + ">", found.1))
+            False -> None
+          }
+        }
+      }
+    }
+  }
+}
+
+_until(chars: List(String), reversed: List(String), quote: String) -> Option(
+  #(String, List(String))
+) {
+  match chars {
+    [] -> None
+    [">", ..rest] if quote == "" -> Some(
+      #(list.reverse(reversed) |> string.join(""), rest)
+    )
+    [char, ..rest] -> {
+      let next = match quote {
+        "" if char == "\"" || char == "'" -> char
+        _ if char == quote -> ""
+        _ -> quote
+      }
+      _until(rest, [char, ..reversed], next)
+    }
+  }
+}
+
+_uri(value: String) -> Bool {
+  match string.split_once(value, ":") {
+    None -> False
+    Some(parts) -> {
+      let scheme = text.chars(parts.0)
+      match scheme {
+        [first, ..rest] -> list.length(scheme) >= 2 && list.length(scheme) <= 32 && _letter(
+          first
+        ) && list.all(rest, fn(c) {
+          _letter(c) || _digit(c) || c == "+" || c == "-" || c == "."
+        }) && list.all(text.chars(value), fn(c) {
+          !text.space(c) && c != "<" && c != ">"
+        })
+        [] -> False
+      }
+    }
+  }
+}
+
+_email(value: String) -> Bool {
+  match string.split(value, "@") {
+    [local, domain] -> local != "" && domain != "" && list.all(
+      text.chars(local),
+      fn(c) {
+        _letter(c) || _digit(c) || string.contains(
+          ".!#$%&'*+/=?^_`{|}~-",
+          c
+        )
+      }
+    ) && list.all(string.split(domain, "."), _domain)
+    _ -> False
+  }
+}
+
+_domain(value: String) -> Bool {
+  let chars = text.chars(value)
+  value != "" && string.length(value) <= 63 && !string.starts_with(value, "-") && !string.ends_with(
+    value,
+    "-"
+  ) && list.all(chars, fn(c) { _letter(c) || _digit(c) || c == "-" })
+}
+
+_tag(value: String) -> Bool {
+  let chars = match text.chars(value) {
+    ["/", ..rest] -> rest
+    _ -> text.chars(value)
+  }
+  let name = list.take_while(chars, fn(c) {
+    _letter(c) || _digit(c) || c == "-"
+  })
+  match name {
+    [first, .._rest] if _letter(first) -> {
+      let after = list.drop(chars, list.length(name))
+      match string.starts_with(value, "/") {
+        True -> list.all(after, text.space)
+        False -> _attributes(after)
+      }
+    }
+    _ -> False
+  }
+}
+
+_attributes(chars: List(String)) -> Bool {
+  match chars {
+    [] -> True
+    ["/"] -> True
+    [first, .._rest] if text.space(first) -> {
+      let rest = list.drop_while(chars, text.space)
+      match rest {
+        [] -> True
+        ["/"] -> True
+        [start, .._rest] if _letter(start) || start == "_" || start == ":" -> {
+          let name = list.take_while(rest, fn(c) {
+            _letter(c) || _digit(c) || string.contains("_.:-", c)
+          })
+          let after_name = list.drop(rest, list.length(name))
+          let after_spaces = list.drop_while(after_name, text.space)
+          match after_spaces {
+            ["=", ..value] -> match _attribute_value(
+              list.drop_while(value, text.space)
+            ) {
+              None -> False
+              Some(tail) -> _attributes(tail)
+            }
+            _ -> _attributes(after_name)
+          }
+        }
+        _ -> False
+      }
+    }
+    _ -> False
+  }
+}
+
+_attribute_value(chars: List(String)) -> Option(List(String)) {
+  match chars {
+    ["\"", ..rest] -> _quoted(rest, "\"")
+    ["'", ..rest] -> _quoted(rest, "'")
+    [] -> None
+    _ -> {
+      let word = list.take_while(chars, fn(c) {
+        !text.space(c) && !string.contains("\"'=<>`", c)
+      })
+      match word {
+        [] -> None
+        _ -> Some(list.drop(chars, list.length(word)))
+      }
+    }
+  }
+}
+
+_quoted(chars: List(String), closing: String) -> Option(List(String)) {
+  match chars {
+    [char, ..rest] if char == closing -> Some(rest)
+    [_, ..rest] -> _quoted(rest, closing)
+    [] -> None
+  }
+}
+
+_special_end(chars: List(String)) -> Option(String) {
+  let start = list.take(chars, 8) |> string.join("")
+  match string.starts_with(start, "!--") {
+    True -> Some("-->")
+    False -> match string.starts_with(start, "![CDATA[") {
+      True -> Some("]]>")
+      False -> match chars {
+        ["?", .._rest] -> Some("?>")
+        ["!", first, .._rest] if _letter(first) -> Some(">")
+        _ -> None
+      }
+    }
+  }
+}
+
+_through(chars: List(String), ending: List(String), reversed: List(String)) -> Option(
+  Content
+) {
+  match chars {
+    [] -> None
+    [char, ..rest] -> match list.take(chars, list.length(ending)) == ending {
+      True -> Some(
+        Raw(
+          "<" + (list.reverse(reversed) |> string.join("")) + string.join(
+            ending,
+            ""
+          ),
+          list.drop(chars, list.length(ending))
+        )
+      )
+      False -> _through(rest, ending, [char, ..reversed])
+    }
+  }
+}
+
+_letter(c: String) -> Bool {
+  string.length(c) == 1 && string.contains(
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
+    c
+  )
+}
+
+_digit(c: String) -> Bool {
+  string.length(c) == 1 && string.contains("0123456789", c)
+}

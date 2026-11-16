@@ -1,0 +1,378 @@
+// SPDX-License-Identifier: Apache-2.0
+
+//// Give code spans and links their boundaries before pairing emphasis runs.
+//// Delimiters remember the original neighbours, not the text produced by an
+//// entity. A resolved link label has its own delimiter scope: emphasis cannot
+//// reach through its brackets to borrow an opener outside.
+////
+//// ```pooka
+//// assert inline.parse("an `owl`") == [ast.Text("an "), ast.Code("owl")]
+//// ```
+module inline
+
+import marksy/ast
+import marksy/text
+import marksy/entities
+import marksy/links
+import marksy/angle
+import marksy/unicode
+import marksy/syntax
+import pooka/list
+import pooka/string
+
+class Context(definitions: List(links.Definition), options: syntax.Options)
+
+class Token {}
+
+class Node(value: ast.Inline) is Token
+
+class Delimiter(marker: String, count: Int, opens: Bool, closes: Bool) is Token
+
+class Opener(value: Delimiter, before: List(Token), between: List(Token))
+
+parse(source: String) -> List(ast.Inline) {
+  parse_with(source, [])
+}
+
+/// Definitions are already collected across the whole document, including
+/// child containers. Their order preserves the first-definition-wins rule.
+parse_with(source: String, definitions: List(links.Definition)) -> List(
+  ast.Inline
+) {
+  parse_configured(source, definitions, syntax.commonmark())
+}
+
+/// Parse optional extensions without changing ordinary CommonMark behaviour.
+parse_configured(
+  source: String,
+  definitions: List(links.Definition),
+  options: syntax.Options
+) -> List(ast.Inline) {
+  let context = Context(definitions, options)
+  let tokens = _scan(text.chars(source), "", [], [], context) |> list.reverse()
+  _resolve(tokens, []) |> list.reverse() |> _nodes()
+}
+
+_flush(pending: List(String), tokens: List(Token)) -> List(Token) {
+  match pending {
+    [] -> tokens
+    _ -> [Node(ast.Text(list.reverse(pending) |> string.join(""))), ..tokens]
+  }
+}
+
+_scan(
+  chars: List(String),
+  previous: String,
+  pending: List(String),
+  tokens: List(Token),
+  definitions: Context
+) -> List(Token) {
+  match chars {
+    [] -> _flush(pending, tokens)
+    ["\\", "\n", ..rest] -> _scan(
+      rest,
+      "\n",
+      [],
+      [Node(ast.HardBreak()), .._flush(pending, tokens)],
+      definitions
+    )
+    ["\\", next, ..rest] -> match _punctuation(next) {
+      True -> _scan(rest, next, [next, ..pending], tokens, definitions)
+      False -> _scan(
+        [next, ..rest],
+        "\\",
+        ["\\", ..pending],
+        tokens,
+        definitions
+      )
+    }
+    ["\n", ..rest] -> {
+      let spaces = text.run(pending, " ")
+      let before = list.drop_while(pending, fn(c) { c == " " || c == "\t" })
+      let node = match spaces >= 2 && previous == " " {
+        True -> ast.HardBreak()
+        False -> ast.SoftBreak()
+      }
+      _scan(
+        list.drop_while(rest, fn(c) { c == " " || c == "\t" }),
+        "\n",
+        [],
+        [Node(node), .._flush(before, tokens)],
+        definitions
+      )
+    }
+    ["`", .._rest] -> {
+      let count = text.run(chars, "`")
+      let remaining = list.drop(chars, count)
+      match _code(remaining, count, []) {
+        None -> _scan(
+          remaining,
+          "`",
+          [string.repeat("`", count), ..pending],
+          tokens,
+          definitions
+        )
+        Some(found) -> {
+          let value = string.replace(found.0, "\n", " ")
+          let all_spaces = list.all(text.chars(value), fn(c) { c == " " })
+          let stripped = match string.starts_with(value, " ") && string.ends_with(
+            value,
+            " "
+          ) && !all_spaces {
+            True -> value |> string.drop_start(1) |> string.drop_end(1)
+            False -> value
+          }
+          _scan(
+            found.1,
+            "`",
+            [],
+            [Node(ast.Code(stripped)), .._flush(pending, tokens)],
+            definitions
+          )
+        }
+      }
+    }
+    ["<", ..rest] -> match angle.read(rest) {
+      None -> _scan(rest, "<", ["<", ..pending], tokens, definitions)
+      Some(angle.Raw(value, tail)) -> _scan(
+        tail,
+        ">",
+        [],
+        [Node(ast.RawInline(value)), .._flush(pending, tokens)],
+        definitions
+      )
+      Some(angle.Address(label, destination, tail)) -> _scan(
+        tail,
+        ">",
+        [],
+        [
+          Node(ast.Link([ast.Text(label)], destination, "")),
+          .._flush(pending, tokens)
+        ],
+        definitions
+      )
+    }
+    ["&", ..rest] -> match entities.read(rest) {
+      Some(found) -> _scan(
+        found.1,
+        ";",
+        [found.0, ..pending],
+        tokens,
+        definitions
+      )
+      None -> _scan(rest, "&", ["&", ..pending], tokens, definitions)
+    }
+    ["!", "[", ..rest] -> _link(rest, True, pending, tokens, definitions)
+    ["[", ..rest] -> _link(rest, False, pending, tokens, definitions)
+    [marker, .._rest] if marker == "*" || marker == "_" || (
+      marker == "~" && definitions.options.strikethrough
+    ) -> {
+      let width = text.run(chars, marker)
+      let remaining = list.drop(chars, width)
+      let next = match remaining {
+        [c, .._tail] -> c
+        [] -> ""
+      }
+      let left = !unicode.whitespace(next) && (
+        !unicode.punctuation(next) || unicode.whitespace(previous) || unicode.punctuation(
+          previous
+        )
+      )
+      let right = !unicode.whitespace(previous) && (
+        !unicode.punctuation(previous) || unicode.whitespace(next) || unicode.punctuation(
+          next
+        )
+      )
+      let opens = left && (
+        marker != "_" || !right || unicode.punctuation(previous)
+      ) && (marker != "~" || width <= 2)
+      let closes = right && (
+        marker != "_" || !left || unicode.punctuation(next)
+      ) && (marker != "~" || width <= 2)
+      let run = Delimiter(marker, width, opens, closes)
+      _scan(
+        remaining,
+        marker,
+        [],
+        [run, .._flush(pending, tokens)],
+        definitions
+      )
+    }
+    [char, ..rest] -> _scan(rest, char, [char, ..pending], tokens, definitions)
+  }
+}
+
+_code(chars: List(String), count: Int, reversed: List(String)) -> Option(
+  #(String, List(String))
+) {
+  match chars {
+    [] -> None
+    ["`", .._rest] -> {
+      let width = text.run(chars, "`")
+      match width == count {
+        True -> Some(
+          #(list.reverse(reversed) |> string.join(""), list.drop(chars, width))
+        )
+        False -> _code(
+          list.drop(chars, width),
+          count,
+          [string.repeat("`", width), ..reversed]
+        )
+      }
+    }
+    [char, ..rest] -> _code(rest, count, [char, ..reversed])
+  }
+}
+
+_link(
+  chars: List(String),
+  image: Bool,
+  pending: List(String),
+  tokens: List(Token),
+  definitions: Context
+) -> List(Token) {
+  let target = links.read_with(chars, definitions.definitions)
+  match target {
+    Some(found) -> {
+      let children = parse_configured(
+        found.label,
+        definitions.definitions,
+        definitions.options
+      )
+      match !image && _has_link(children) {
+        True -> _literal_bracket(chars, image, pending, tokens, definitions)
+        False -> {
+          let node = match image {
+            True -> ast.Image(children, found.destination, found.title)
+            False -> ast.Link(children, found.destination, found.title)
+          }
+          _scan(
+            found.rest,
+            "]",
+            [],
+            [Node(node), .._flush(pending, tokens)],
+            definitions
+          )
+        }
+      }
+    }
+    None -> _literal_bracket(chars, image, pending, tokens, definitions)
+  }
+}
+
+_literal_bracket(
+  chars: List(String),
+  image: Bool,
+  pending: List(String),
+  tokens: List(Token),
+  definitions: Context
+) -> List(Token) {
+  let prefix = match image {
+    True -> "!["
+    False -> "["
+  }
+  _scan(chars, "[", [prefix, ..pending], tokens, definitions)
+}
+
+_has_link(nodes: List(ast.Inline)) -> Bool {
+  list.any(nodes, fn(node) {
+    match node {
+      ast.Link(_, _, _) -> True
+      ast.Emphasis(children) -> _has_link(children)
+      ast.Strong(children) -> _has_link(children)
+      ast.Strikethrough(children) -> _has_link(children)
+      _ -> False
+    }
+  })
+}
+
+// Process closers from left to right. A successful pair removes intervening
+// delimiter records while retaining their literal text inside the new node.
+// Remaining runs can pair again, giving ***owl*** its nested em/strong shape.
+_resolve(tokens: List(Token), before: List(Token)) -> List(Token) {
+  match tokens {
+    [] -> before
+    [Delimiter(marker, count, opens, True), ..rest] -> {
+      let closer = Delimiter(marker, count, opens, True)
+      match _opener(before, closer, []) {
+        None -> _resolve(rest, [closer, ..before])
+        Some(found) -> {
+          let width = match count >= 2 && found.value.count >= 2 {
+            True -> 2
+            False -> 1
+          }
+          let children = _nodes(found.between)
+          let node = match marker {
+            "~" -> ast.Strikethrough(children)
+            _ -> match width {
+              2 -> ast.Strong(children)
+              _ -> ast.Emphasis(children)
+            }
+          }
+          let prefix = match found.value.count > width {
+            True -> [
+              Delimiter(
+                marker,
+                found.value.count - width,
+                found.value.opens,
+                found.value.closes
+              ),
+              ..found.before
+            ]
+            False -> found.before
+          }
+          let after = [Node(node), ..prefix]
+          match count > width {
+            True -> _resolve(
+              [Delimiter(marker, count - width, opens, True), ..rest],
+              after
+            )
+            False -> _resolve(rest, after)
+          }
+        }
+      }
+    }
+    [token, ..rest] -> _resolve(rest, [token, ..before])
+  }
+}
+
+_opener(before: List(Token), closer: Delimiter, between: List(Token)) -> Option(
+  Opener
+) {
+  match before {
+    [] -> None
+    [Delimiter(marker, count, True, closes), ..rest] -> {
+      let odd = marker != "~" && (closes || closer.opens) && (
+        count + closer.count
+      ) % 3 == 0 && (
+        count % 3 != 0 || closer.count % 3 != 0
+      )
+      match marker == closer.marker && !odd && (
+        marker != "~" || count == closer.count
+      ) {
+        True -> Some(
+          Opener(Delimiter(marker, count, True, closes), rest, between)
+        )
+        False -> _opener(
+          rest,
+          closer,
+          [Delimiter(marker, count, True, closes), ..between]
+        )
+      }
+    }
+    [token, ..rest] -> _opener(rest, closer, [token, ..between])
+  }
+}
+
+_nodes(tokens: List(Token)) -> List(ast.Inline) {
+  list.map(tokens, fn(token) {
+    match token {
+      Node(value) -> value
+      Delimiter(marker, count, _, _) -> ast.Text(string.repeat(marker, count))
+    }
+  })
+}
+
+_punctuation(char: String) -> Bool {
+  string.contains("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~", char)
+}

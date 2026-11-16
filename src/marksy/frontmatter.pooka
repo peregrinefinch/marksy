@@ -1,0 +1,91 @@
+// SPDX-License-Identifier: Apache-2.0
+
+//// Open the envelope before reading the letter. Only a `---` line at the
+//// very start opens TOML front matter; a rule later in the document belongs
+//// to Markdown. The body keeps its original bytes and its source address.
+////
+//// ```pooka
+//// let assert Ok(page) = frontmatter.read("---\ntitle = \"Owl\"\n---\n# Hello\n")
+//// assert page.body == "# Hello\n"
+//// assert page.body_line == 4
+//// ```
+module frontmatter
+
+import tome
+import pooka/list
+import pooka/string
+
+/// The body has not been parsed or normalised. Its byte offset starts at zero,
+/// while its line number starts at one, just like an editor's gutter.
+class Page(
+  metadata: Option(tome.Toml),
+  body: String,
+  body_line: Int,
+  body_byte_offset: Int
+)
+
+/// Error lines refer to the complete input, including the opening delimiter.
+class FrontmatterError(line: Int, message: String)
+
+/// Read optional TOML between exact `---` lines. An opening delimiter commits
+/// to front matter: missing closing delimiters and invalid TOML are errors.
+///
+/// ```pooka
+/// let assert Ok(page) = frontmatter.read("# A page without an envelope\n")
+/// assert page.metadata == None
+/// ```
+read(source: String) -> Result(Page, FrontmatterError) {
+  let first = _line(source)
+  match first.0 == "---" {
+    False -> Ok(Page(None, source, 1, 0))
+    True -> _metadata(first.1, [], 2, first.2)
+  }
+}
+
+// Read one physical line, retaining its byte width separately. CRLF counts as
+// one line but two bytes; stripping CR here never changes the returned body.
+_line(source: String) -> #(String, String, Int) {
+  match string.split_once(source, "\n") {
+    None -> #(source, "", string.byte_size(source))
+    Some(parts) -> {
+      let text = match string.ends_with(parts.0, "\r") {
+        True -> string.slice(parts.0, 0, string.length(parts.0) - 1)
+        False -> parts.0
+      }
+      #(text, parts.1, string.byte_size(parts.0) + 1)
+    }
+  }
+}
+
+_metadata(
+  remaining: String,
+  reversed: List(String),
+  line: Int,
+  offset: Int
+) -> Result(Page, FrontmatterError) {
+  match remaining {
+    "" -> Error(FrontmatterError(1, "front matter needs a closing --- line"))
+    _ -> {
+      let next = _line(remaining)
+      match next.0 == "---" {
+        True -> {
+          let text = list.reverse(reversed) |> string.join("\n")
+          match tome.parse(text) {
+            Ok(metadata) -> Ok(
+              Page(Some(metadata), next.1, line + 1, offset + next.2)
+            )
+            Error(problem) -> Error(
+              FrontmatterError(problem.line + 1, problem.message)
+            )
+          }
+        }
+        False -> _metadata(
+          next.1,
+          [next.0, ..reversed],
+          line + 1,
+          offset + next.2
+        )
+      }
+    }
+  }
+}

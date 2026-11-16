@@ -1,0 +1,1089 @@
+// SPDX-License-Identifier: Apache-2.0
+
+//// Settle the outline before reading the punctuation inside it. Fenced code
+//// and indented code keep literal contents; paragraphs alone ask the inline
+//// reader to interpret their words. The line reader retains original byte
+//// offsets even when CRLF becomes one logical newline.
+////
+//// ```pooka
+//// let document = block.parse("# Owl\n\nA visitor.\n")
+//// assert list.length(document.blocks) == 2
+//// ```
+module block
+
+import marksy/ast
+import marksy/inline
+import marksy/text
+import marksy/angle
+import marksy/links
+import marksy/syntax
+import marksy/tables
+import pooka/list
+import pooka/int
+import pooka/string
+
+class Line(value: String, start: ast.Position, end: ast.Position, lazy: Bool)
+
+// A content column belongs to this particular item, not to its siblings.
+// Ordered marker widths can change between `9.` and `10.` in the same list.
+class Marker(
+  ordered: Bool,
+  start: Int,
+  delimiter: String,
+  indent: Int,
+  content_column: Int,
+  content: String
+)
+
+class ItemRead(
+  lines: List(Line),
+  rest: List(Line),
+  last: Line,
+  trailing_blank: Bool
+)
+
+class HtmlEnd(closing: String, folded: Bool, blank: Bool)
+
+class Fence(marker: String, width: Int, indent: Int, info: String)
+
+/// Read Markdown without stripping front matter. In ordinary Markdown, `---`
+/// is a thematic break; metadata extraction belongs to the document API.
+parse(source: String) -> ast.Document {
+  parse_at(source, 1, 0)
+}
+
+/// Shift addresses when the body follows a metadata envelope.
+parse_at(source: String, first_line: Int, first_byte: Int) -> ast.Document {
+  parse_at_with(source, first_line, first_byte, syntax.commonmark())
+}
+
+parse_with(source: String, options: syntax.Options) -> ast.Document {
+  parse_at_with(source, 1, 0, options)
+}
+
+parse_at_with(
+  source: String,
+  first_line: Int,
+  first_byte: Int,
+  options: syntax.Options
+) -> ast.Document {
+  let position = ast.Position(first_line, 1, first_byte)
+  let lines = _lines(text.chars(source), position, position, [], []) |> list.reverse()
+  let blocks = _blocks(lines, []) |> list.reverse()
+  let definitions = _definitions(blocks)
+  ast.Document(_resolve_blocks(blocks, definitions, options))
+}
+
+_lines(
+  chars: List(String),
+  start: ast.Position,
+  cursor: ast.Position,
+  pending: List(String),
+  lines: List(Line)
+) -> List(Line) {
+  match chars {
+    [] -> match pending {
+      [] -> lines
+      _ -> [
+        Line(list.reverse(pending) |> string.join(""), start, cursor, False),
+        ..lines
+      ]
+    }
+    ["\r", "\n", ..rest] -> _newline(rest, start, cursor, pending, lines, 2)
+    ["\r", ..rest] -> _newline(rest, start, cursor, pending, lines, 1)
+    ["\n", ..rest] -> _newline(rest, start, cursor, pending, lines, 1)
+    [char, ..rest] -> {
+      let value = match char {
+        "\u{0}" -> "�"
+        _ -> char
+      }
+      _lines(
+        rest,
+        start,
+        ast.Position(
+          cursor.line,
+          cursor.column + 1,
+          cursor.byte_offset + string.byte_size(char)
+        ),
+        [value, ..pending],
+        lines
+      )
+    }
+  }
+}
+
+_newline(
+  rest: List(String),
+  start: ast.Position,
+  cursor: ast.Position,
+  pending: List(String),
+  lines: List(Line),
+  width: Int
+) -> List(Line) {
+  let end = ast.Position(cursor.line + 1, 1, cursor.byte_offset + width)
+  let line = Line(list.reverse(pending) |> string.join(""), start, end, False)
+  _lines(rest, end, end, [], [line, ..lines])
+}
+
+_span(first: Line, last: Line) -> ast.Span {
+  ast.Span(first.start, last.end)
+}
+
+_blocks(lines: List(Line), reversed: List(ast.Block)) -> List(ast.Block) {
+  match lines {
+    [] -> reversed
+    [line, ..rest] if text.trim(line.value) == "" -> _blocks(rest, reversed)
+    _ -> {
+      let found = _one_block(lines)
+      _blocks(found.1, [found.0, ..reversed])
+    }
+  }
+}
+
+// A successful block always consumes at least its first nonblank line.
+_one_block(lines: List(Line)) -> #(ast.Block, List(Line)) {
+  let assert [line, .._rest] = lines
+  let indent = _indent(line.value)
+  let candidate = match indent.0 <= 3 && string.starts_with(indent.1, "[") {
+    False -> None
+    True -> {
+      let nonblank = list.take_while(lines, fn(candidate) {
+        text.trim(candidate.value) != ""
+      })
+      let source = list.map(nonblank, fn(candidate) { candidate.value }) |> string.join(
+        "\n"
+      )
+      links.definition(
+        string.drop_start(
+          source,
+          string.length(line.value) - string.length(indent.1)
+        ) + "\n"
+      )
+    }
+  }
+  match candidate {
+    Some(found) if found.lines > 0 -> {
+      let consumed = list.take(lines, found.lines)
+      let last = list.reverse(consumed) |> list.first()
+      let ending = match last {
+        Some(last) -> last
+        None -> line
+      }
+      #(
+        ast.ReferenceDefinition(
+          found.value.label,
+          found.value.destination,
+          found.value.title,
+          _span(line, ending)
+        ),
+        list.drop(lines, found.lines)
+      )
+    }
+    _ -> _content_block(lines)
+  }
+}
+
+_content_block(lines: List(Line)) -> #(ast.Block, List(Line)) {
+  let assert [line, ..rest] = lines
+  match _html_start(line.value, False) {
+    Some(ending) -> {
+      let found = _raw_lines(lines, ending, [], line)
+      #(ast.RawBlock(found.0, _span(line, found.2)), found.1)
+    }
+    None -> match _fence(line.value) {
+      Some(fence) -> {
+        let body = _fenced(rest, fence, [], line)
+        #(ast.CodeBlock(body.0, fence.info, _span(line, body.2)), body.1)
+      }
+      None -> match _heading(line.value) {
+        Some(heading) -> #(
+          ast.Heading(
+            heading.0,
+            [ast.SourceInline(heading.1)],
+            _span(line, line)
+          ),
+          rest
+        )
+        None -> match _rule(line.value) {
+          True -> #(ast.ThematicBreak(_span(line, line)), rest)
+          False -> match _quote(line.value) {
+            Some(_) -> {
+              let body = _quoted(lines, [], line)
+              let children = _blocks(body.0, []) |> list.reverse()
+              #(ast.BlockQuote(children, _span(line, body.2)), body.1)
+            }
+            None -> match _marker(line.value) {
+              Some(marker) -> _list(lines, marker, [], True, line, False)
+              None -> match _indent(line.value).0 >= 4 {
+                True -> {
+                  let body = _indented(lines, [], line)
+                  let code = list.reverse(body.0) |> _trim_blank_end() |> string.join(
+                    "\n"
+                  )
+                  #(ast.CodeBlock(code + "\n", "", _span(line, body.2)), body.1)
+                }
+                False -> {
+                  let paragraph = _paragraph(rest, [line.value], line)
+                  let content = [ast.SourceInline(paragraph.0)]
+                  let node = match paragraph.3 {
+                    0 -> ast.Paragraph(content, _span(line, paragraph.2))
+                    level -> ast.Heading(
+                      level,
+                      content,
+                      _span(line, paragraph.2)
+                    )
+                  }
+                  #(node, paragraph.1)
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// Indentation uses tab stops at multiples of four. The untouched suffix keeps
+// literal tabs inside code; only tabs consumed as indentation become spaces.
+_indent(value: String) -> #(Int, String) {
+  _indent_chars(text.chars(value), 0)
+}
+
+_indent_chars(chars: List(String), width: Int) -> #(Int, String) {
+  match chars {
+    [" ", ..rest] -> _indent_chars(rest, width + 1)
+    ["\t", ..rest] -> _indent_chars(rest, width + 4 - width % 4)
+    _ -> #(width, string.join(chars, ""))
+  }
+}
+
+_strip(value: String, count: Int) -> String {
+  let indent = _indent(value)
+  string.repeat(" ", match indent.0 - count > 0 {
+    True -> indent.0 - count
+    False -> 0
+  }) + indent.1
+}
+
+_fence(value: String) -> Option(Fence) {
+  let indent = _indent(value)
+  let chars = text.chars(indent.1)
+  match list.first(chars) {
+    Some(marker) if indent.0 <= 3 && (marker == "`" || marker == "~") -> {
+      let width = text.run(chars, marker)
+      let info = list.drop(chars, width) |> string.join("") |> text.trim()
+      match width >= 3 && !(marker == "`" && string.contains(info, "`")) {
+        True -> Some(Fence(marker, width, indent.0, links.decode_literal(info)))
+        False -> None
+      }
+    }
+    _ -> None
+  }
+}
+
+_fenced(lines: List(Line), fence: Fence, reversed: List(String), last: Line) -> #(
+  String,
+  List(Line),
+  Line
+) {
+  match lines {
+    [] -> #(list.reverse(reversed) |> string.join(""), [], last)
+    [line, ..rest] -> {
+      let indent = _indent(line.value)
+      let chars = text.chars(indent.1)
+      let width = text.run(chars, fence.marker)
+      let after = list.drop(chars, width) |> string.join("") |> text.trim()
+      match indent.0 <= 3 && width >= fence.width && after == "" {
+        True -> #(list.reverse(reversed) |> string.join(""), rest, line)
+        False -> _fenced(
+          rest,
+          fence,
+          [_strip(line.value, fence.indent) + "\n", ..reversed],
+          line
+        )
+      }
+    }
+  }
+}
+
+_heading(value: String) -> Option(#(Int, String)) {
+  let indent = _indent(value)
+  let chars = text.chars(indent.1)
+  let count = text.run(chars, "#")
+  let rest = list.drop(chars, count)
+  let after = list.first(rest)
+  match indent.0 <= 3 && count >= 1 && count <= 6 && (
+    after == None || after == Some(" ") || after == Some("\t")
+  ) {
+    False -> None
+    True -> {
+      let body = string.join(rest, "") |> text.trim()
+      let reversed = text.chars(body) |> list.reverse()
+      let hashes = text.run(reversed, "#")
+      let before = list.drop(reversed, hashes)
+      let closing = hashes > 0 && (
+        before == [] || list.first(before) == Some(" ") || list.first(before) == Some(
+          "\t"
+        )
+      )
+      let content = match closing {
+        True -> list.reverse(before) |> string.join("") |> text.trim()
+        False -> body
+      }
+      Some(#(count, content))
+    }
+  }
+}
+
+_rule(value: String) -> Bool {
+  let indent = _indent(value)
+  let chars = text.chars(indent.1) |> list.filter(fn(char) {
+    char != " " && char != "\t"
+  })
+  match chars {
+    [first, .._rest] if indent.0 <= 3 && (
+      first == "*" || first == "-" || first == "_"
+    ) -> list.length(chars) >= 3 && list.all(chars, fn(char) { char == first })
+    _ -> False
+  }
+}
+
+_setext(value: String) -> Int {
+  let indent = _indent(value)
+  let chars = text.chars(indent.1) |> list.reverse() |> list.drop_while(
+    text.space
+  ) |> list.reverse()
+  match chars {
+    [first, .._rest] if indent.0 <= 3 && (first == "=" || first == "-") -> match list.all(
+      chars,
+      fn(char) { char == first }
+    ) {
+      True -> match first {
+        "=" -> 1
+        _ -> 2
+      }
+      False -> 0
+    }
+    _ -> 0
+  }
+}
+
+_quote(value: String) -> Option(String) {
+  let indent = _indent(value)
+  match text.chars(indent.1) {
+    [">", ..rest] if indent.0 <= 3 -> {
+      let padding = _padding(rest, indent.0 + 1, 0)
+      let kept = match padding.0 > 0 {
+        True -> padding.0 - 1
+        False -> 0
+      }
+      Some(string.repeat(" ", kept) + padding.1)
+    }
+    _ -> None
+  }
+}
+
+_quoted(lines: List(Line), reversed: List(Line), last: Line) -> #(
+  List(Line),
+  List(Line),
+  Line
+) {
+  _quoted_lines(lines, reversed, last, None)
+}
+
+// Once a lazy line is accepted, further lazy lines continue the same paragraph.
+// An explicit quote prefix invalidates that cached state: it may open code or
+// close a paragraph, and the next boundary must inspect the new last leaf.
+_quoted_lines(
+  lines: List(Line),
+  reversed: List(Line),
+  last: Line,
+  paragraph: Option(Bool)
+) -> #(List(Line), List(Line), Line) {
+  match lines {
+    [line, ..rest] -> match _quote(line.value) {
+      Some(value) -> _quoted_lines(
+        rest,
+        [Line(value, line.start, line.end, line.lazy), ..reversed],
+        line,
+        None
+      )
+      None -> {
+        let open = match _interrupts(line.value) {
+          True -> False
+          False -> match paragraph {
+            Some(open) -> open
+            None -> _paragraph_open(reversed)
+          }
+        }
+        match open {
+          True -> _quoted_lines(
+            rest,
+            [Line(line.value, line.start, line.end, True), ..reversed],
+            line,
+            Some(True)
+          )
+          False -> #(list.reverse(reversed), lines, last)
+        }
+      }
+    }
+    [] -> #(list.reverse(reversed), [], last)
+  }
+}
+
+_indented(lines: List(Line), reversed: List(String), last: Line) -> #(
+  List(String),
+  List(Line),
+  Line
+) {
+  match lines {
+    [line, ..rest] -> match text.trim(line.value) == "" || _indent(line.value).0 >= 4 {
+      True -> _indented(rest, [_strip(line.value, 4), ..reversed], line)
+      False -> #(reversed, lines, last)
+    }
+    [] -> #(reversed, [], last)
+  }
+}
+
+_trim_blank_end(lines: List(String)) -> List(String) {
+  lines |> list.reverse() |> list.drop_while(fn(line) { text.trim(line) == "" }) |> list.reverse()
+}
+
+_paragraph(lines: List(Line), reversed: List(String), last: Line) -> #(
+  String,
+  List(Line),
+  Line,
+  Int
+) {
+  match lines {
+    [] -> #(
+      list.reverse(reversed) |> string.join("\n") |> text.trim(),
+      [],
+      last,
+      0
+    )
+    [line, ..rest] -> {
+      let setext = match line.lazy {
+        True -> 0
+        False -> _setext(line.value)
+      }
+      match setext > 0 {
+        True -> #(
+          list.reverse(reversed) |> string.join("\n") |> text.trim(),
+          rest,
+          line,
+          setext
+        )
+        False -> match text.trim(line.value) == "" || _heading(line.value) != None || _fence(
+          line.value
+        ) != None || _rule(line.value) || _quote(line.value) != None || _interrupting_marker(
+          line.value
+        ) || _html_start(line.value, True) != None {
+          True -> #(
+            list.reverse(reversed) |> string.join("\n") |> text.trim(),
+            lines,
+            last,
+            0
+          )
+          False -> _paragraph(rest, [_start_trim(line.value), ..reversed], line)
+        }
+      }
+    }
+  }
+}
+
+/// CommonMark permits up to three columns before a marker, then one to four
+/// columns of padding. Wider padding leaves four-column code indentation in
+/// the item. Empty items always use a single padding column for continuation.
+_marker(value: String) -> Option(Marker) {
+  let indent = _indent(value)
+  match indent.0 <= 3 && !_rule(value) {
+    False -> None
+    True -> {
+      let chars = text.chars(indent.1)
+      match chars {
+        [bullet, ..after] if bullet == "-" || bullet == "+" || bullet == "*" -> _marker_after(
+          False,
+          1,
+          bullet,
+          indent.0,
+          1,
+          after
+        )
+        _ -> {
+          let digits = list.take_while(chars, fn(c) {
+            string.contains("0123456789", c)
+          })
+          let width = list.length(digits)
+          match list.drop(chars, width) {
+            [delimiter, ..after] if width >= 1 && width <= 9 && (
+              delimiter == "." || delimiter == ")"
+            ) -> {
+              let assert Ok(start) = int.parse(string.join(digits, ""))
+              _marker_after(True, start, delimiter, indent.0, width + 1, after)
+            }
+            _ -> None
+          }
+        }
+      }
+    }
+  }
+}
+
+_marker_after(
+  ordered: Bool,
+  start: Int,
+  delimiter: String,
+  indent: Int,
+  width: Int,
+  chars: List(String)
+) -> Option(Marker) {
+  match chars {
+    [] -> Some(
+      Marker(ordered, start, delimiter, indent, indent + width + 1, "")
+    )
+    [space, .._rest] if space == " " || space == "\t" -> {
+      let padding = _padding(chars, indent + width, 0)
+      let count = match padding.0 >= 1 && padding.0 <= 4 && padding.1 != "" {
+        True -> padding.0
+        False -> 1
+      }
+      let content = match padding.1 {
+        "" -> ""
+        _ -> string.repeat(" ", padding.0 - count) + padding.1
+      }
+      Some(
+        Marker(
+          ordered,
+          start,
+          delimiter,
+          indent,
+          indent + width + count,
+          content
+        )
+      )
+    }
+    _ -> None
+  }
+}
+
+_padding(chars: List(String), column: Int, width: Int) -> #(Int, String) {
+  match chars {
+    [" ", ..rest] -> _padding(rest, column + 1, width + 1)
+    ["\t", ..rest] -> {
+      let amount = 4 - column % 4
+      _padding(rest, column + amount, width + amount)
+    }
+    _ -> #(width, string.join(chars, ""))
+  }
+}
+
+_interrupting_marker(value: String) -> Bool {
+  match _marker(value) {
+    Some(marker) -> text.trim(marker.content) != "" && (
+      !marker.ordered || marker.start == 1
+    )
+    None -> False
+  }
+}
+
+// Stop an item at its next sibling, but consume indented child blocks before
+// testing for siblings. Lazy unindented lines can continue an open paragraph;
+// they cannot reopen one after a blank line or escape from a code fence.
+_item_lines(
+  lines: List(Line),
+  marker: Marker,
+  reversed: List(Line),
+  last: Line,
+  after_blank: Bool,
+  paragraph: Option(Bool)
+) -> ItemRead {
+  match lines {
+    [] -> ItemRead(list.reverse(reversed), [], last, after_blank)
+    [line, ..rest] -> {
+      let blank = text.trim(line.value) == ""
+      let indent = _indent(line.value).0
+      match blank {
+        True -> match marker.content == "" && list.length(reversed) == 1 {
+          True -> ItemRead(list.reverse(reversed), lines, last, True)
+          False -> _item_lines(
+            rest,
+            marker,
+            [Line("", line.start, line.end, False), ..reversed],
+            last,
+            True,
+            Some(False)
+          )
+        }
+        False -> match indent >= marker.content_column {
+          True -> {
+            let value = _strip(line.value, marker.content_column)
+            let transformed = Line(value, line.start, line.end, line.lazy)
+            _item_lines(
+              rest,
+              marker,
+              [transformed, ..reversed],
+              line,
+              False,
+              None
+            )
+          }
+          False -> {
+            let eligible = _marker(line.value) == None && !after_blank && !_interrupts(
+              line.value
+            )
+            let open = match eligible {
+              False -> False
+              True -> match paragraph {
+                Some(open) -> open
+                None -> _paragraph_open(reversed)
+              }
+            }
+            match open {
+              True -> _item_lines(
+                rest,
+                marker,
+                [Line(line.value, line.start, line.end, True), ..reversed],
+                line,
+                False,
+                Some(True)
+              )
+              False -> ItemRead(
+                list.reverse(reversed),
+                lines,
+                last,
+                after_blank
+              )
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// Only a potentially lazy continuation asks for the final leaf. Cache the
+// answer across further lazy lines instead of reparsing every indented line.
+// Parsing the accumulated item tells us whether its final leaf is a paragraph.
+// This handles paragraphs inside nested quotes/lists and avoids calling fenced
+// code a lazy paragraph. The parser uses this only at container boundaries.
+_paragraph_open(reversed: List(Line)) -> Bool {
+  match reversed {
+    [] -> False
+    [last, .._rest] if text.trim(last.value) == "" -> False
+    _ -> {
+      let blocks = _blocks(list.reverse(reversed), [])
+      _last_paragraph(blocks)
+    }
+  }
+}
+
+_last_paragraph(reversed: List(ast.Block)) -> Bool {
+  match reversed {
+    [ast.Paragraph(_, _), .._rest] -> True
+    [ast.BlockQuote(children, _), .._rest] -> _last_paragraph(
+      list.reverse(children)
+    )
+    [ast.ListBlock(_, _, _, items, _), .._rest] -> match list.reverse(items) {
+      [item, .._items] -> _last_paragraph(list.reverse(item.blocks))
+      [] -> False
+    }
+    _ -> False
+  }
+}
+
+_interrupts(value: String) -> Bool {
+  text.trim(value) == "" || _heading(value) != None || _fence(value) != None || _rule(
+    value
+  ) || _quote(value) != None || _interrupting_marker(value) || _html_start(
+    value,
+    True
+  ) != None
+}
+
+_list(
+  lines: List(Line),
+  family: Marker,
+  reversed: List(ast.ListItem),
+  tight: Bool,
+  last: Line,
+  previous_blank: Bool
+) -> #(ast.Block, List(Line)) {
+  match lines {
+    [line, .._rest] if text.trim(line.value) == "" -> {
+      let after = list.drop_while(lines, fn(candidate) {
+        text.trim(candidate.value) == ""
+      })
+      match after {
+        [next, .._tail] -> match _marker(next.value) {
+          Some(marker) if marker.ordered == family.ordered && marker.delimiter == family.delimiter -> _list(
+            after,
+            family,
+            reversed,
+            tight,
+            last,
+            True
+          )
+          _ -> _list_end(lines, family, reversed, tight, last)
+        }
+        [] -> _list_end(lines, family, reversed, tight, last)
+      }
+    }
+    [line, ..rest] -> match _marker(line.value) {
+      Some(marker) if marker.ordered == family.ordered && marker.delimiter == family.delimiter -> {
+        let first = Line(marker.content, line.start, line.end, line.lazy)
+        let item = _item_lines(rest, marker, [first], line, False, None)
+        let children = _blocks(item.lines, []) |> list.reverse()
+        let tight = tight && !previous_blank && !_between_blocks(
+          children,
+          item.lines
+        )
+        let next = ast.ListItem(children, _span(line, item.last), None)
+        _list(
+          item.rest,
+          family,
+          [next, ..reversed],
+          tight,
+          item.last,
+          item.trailing_blank
+        )
+      }
+      _ -> _list_end(lines, family, reversed, tight, last)
+    }
+    [] -> _list_end([], family, reversed, tight, last)
+  }
+}
+
+// Blank lines inside fenced code, nested quotes, or nested lists do not loosen
+// the parent list. Compare the parsed top-level siblings with their addresses.
+_between_blocks(blocks: List(ast.Block), lines: List(Line)) -> Bool {
+  match blocks {
+    [first, second, ..rest] -> {
+      let end = _block_span(first).end.line
+      let start = _block_span(second).start.line
+      let blank = list.any(lines, fn(line) {
+        line.start.line >= end && line.start.line < start && text.trim(
+          line.value
+        ) == ""
+      })
+      blank || _between_blocks([second, ..rest], lines)
+    }
+    _ -> False
+  }
+}
+
+_block_span(block: ast.Block) -> ast.Span {
+  match block {
+    ast.Paragraph(_, span) -> span
+    ast.Heading(_, _, span) -> span
+    ast.ThematicBreak(span) -> span
+    ast.CodeBlock(_, _, span) -> span
+    ast.BlockQuote(_, span) -> span
+    ast.Table(_, _, _, span) -> span
+    ast.ReferenceDefinition(_, _, _, span) -> span
+    ast.RawBlock(_, span) -> span
+    ast.ListBlock(_, _, _, _, span) -> span
+  }
+}
+
+_list_end(
+  lines: List(Line),
+  family: Marker,
+  reversed: List(ast.ListItem),
+  tight: Bool,
+  last: Line
+) -> #(ast.Block, List(Line)) {
+  let items = list.reverse(reversed)
+  let start = match items {
+    [first, .._rest] -> first.span.start
+    [] -> last.start
+  }
+  #(
+    ast.ListBlock(
+      family.ordered,
+      family.start,
+      tight,
+      items,
+      ast.Span(start, last.end)
+    ),
+    lines
+  )
+}
+
+// CommonMark has seven HTML block starts. The first five have explicit closing
+// strings; block tags and standalone complete tags end at the next blank line.
+// Standalone inline tags (type seven) cannot interrupt an open paragraph.
+_html_start(value: String, interrupt: Bool) -> Option(HtmlEnd) {
+  let indent = _indent(value)
+  match indent.0 > 3 || !string.starts_with(indent.1, "<") {
+    True -> None
+    False -> {
+      let source = indent.1
+      let lower = string.lowercase(source)
+      let raw_tag = list.find(["script", "pre", "style", "textarea"], fn(tag) {
+        let prefix = "<" + tag
+        string.starts_with(lower, prefix) && _tag_boundary(
+          string.drop_start(lower, string.length(prefix))
+        )
+      })
+      match raw_tag {
+        Some(tag) -> Some(HtmlEnd("</" + tag + ">", True, False))
+        None -> match string.starts_with(source, "<!--") {
+          True -> Some(HtmlEnd("-->", False, False))
+          False -> match string.starts_with(source, "<?") {
+            True -> Some(HtmlEnd("?>", False, False))
+            False -> match string.starts_with(source, "<![CDATA[") {
+              True -> Some(HtmlEnd("]]>", False, False))
+              False -> {
+                let letters = text.chars(source)
+                match letters {
+                  ["<", "!", first, .._rest] if string.contains(
+                    "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+                    first
+                  ) -> Some(HtmlEnd(">", False, False))
+                  _ -> {
+                    let after_open = string.drop_start(lower, 1) |> string.remove_prefix(
+                      "/"
+                    )
+                    let tag = text.chars(after_open) |> list.take_while(fn(c) {
+                      string.contains("abcdefghijklmnopqrstuvwxyz0123456789", c)
+                    }) |> string.join("")
+                    let tail = string.drop_start(after_open, string.length(tag))
+                    match _block_tag(tag) && _tag_boundary(tail) {
+                      True -> Some(HtmlEnd("", False, True))
+                      False -> match !interrupt && _complete_tag(source) {
+                        True -> Some(HtmlEnd("", False, True))
+                        False -> None
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+_tag_boundary(value: String) -> Bool {
+  match text.chars(value) {
+    [] -> True
+    [first, .._rest] -> text.space(first) || first == ">" || string.starts_with(
+      value,
+      "/>"
+    )
+  }
+}
+
+_complete_tag(value: String) -> Bool {
+  match angle.read(text.chars(string.drop_start(value, 1))) {
+    Some(angle.Raw(raw, rest)) -> !string.starts_with(raw, "<!") && !string.starts_with(
+      raw,
+      "<?"
+    ) && list.all(rest, text.space)
+    _ -> False
+  }
+}
+
+_block_tag(value: String) -> Bool {
+  list.contains(
+    [
+      "address",
+      "article",
+      "aside",
+      "base",
+      "basefont",
+      "blockquote",
+      "body",
+      "caption",
+      "center",
+      "col",
+      "colgroup",
+      "dd",
+      "details",
+      "dialog",
+      "dir",
+      "div",
+      "dl",
+      "dt",
+      "fieldset",
+      "figcaption",
+      "figure",
+      "footer",
+      "form",
+      "frame",
+      "frameset",
+      "h1",
+      "h2",
+      "h3",
+      "h4",
+      "h5",
+      "h6",
+      "head",
+      "header",
+      "hr",
+      "html",
+      "iframe",
+      "legend",
+      "li",
+      "link",
+      "main",
+      "menu",
+      "menuitem",
+      "nav",
+      "noframes",
+      "ol",
+      "optgroup",
+      "option",
+      "p",
+      "param",
+      "search",
+      "section",
+      "summary",
+      "table",
+      "tbody",
+      "td",
+      "tfoot",
+      "th",
+      "thead",
+      "title",
+      "tr",
+      "track",
+      "ul"
+    ],
+    value
+  )
+}
+
+_raw_lines(
+  lines: List(Line),
+  ending: HtmlEnd,
+  reversed: List(String),
+  last: Line
+) -> #(String, List(Line), Line) {
+  match lines {
+    [] -> #(list.reverse(reversed) |> string.join(""), [], last)
+    [line, ..rest] -> match ending.blank && text.trim(line.value) == "" {
+      True -> #(list.reverse(reversed) |> string.join(""), lines, last)
+      False -> {
+        let value = line.value + "\n"
+        let haystack = match ending.folded {
+          True -> string.lowercase(value)
+          False -> value
+        }
+        let chunks = [value, ..reversed]
+        match !ending.blank && string.contains(haystack, ending.closing) {
+          True -> #(list.reverse(chunks) |> string.join(""), rest, line)
+          False -> _raw_lines(rest, ending, chunks, line)
+        }
+      }
+    }
+  }
+}
+
+// Walk definitions in source order, including nested containers. Parsing their
+// labels later allows a heading to refer to a definition farther down the page.
+_definitions(blocks: List(ast.Block)) -> List(links.Definition) {
+  list.fold(blocks, [], fn(found, block) {
+    let next = match block {
+      ast.ReferenceDefinition(label, destination, title, _) -> [
+        links.Definition(label, destination, title)
+      ]
+      ast.BlockQuote(children, _) -> _definitions(children)
+      ast.ListBlock(_, _, _, items, _) -> list.fold(
+        items,
+        [],
+        fn(definitions, item) {
+          list.concat(
+            definitions,
+            _definitions(item.blocks)
+          )
+        }
+      )
+      _ -> []
+    }
+    list.concat(found, next)
+  })
+}
+
+_resolve_blocks(
+  blocks: List(ast.Block),
+  definitions: List(links.Definition),
+  options: syntax.Options
+) -> List(
+  ast.Block
+) {
+  list.filter_map(blocks, fn(block) {
+    match block {
+      ast.ReferenceDefinition(_, _, _, _) -> None
+      ast.Paragraph([ast.SourceInline(source)], span) -> Some(
+        match options.tables {
+          True -> match tables.parse(source, definitions, options, span) {
+            Some(table) -> table
+            None -> ast.Paragraph(
+              inline.parse_configured(source, definitions, options),
+              span
+            )
+          }
+          False -> ast.Paragraph(
+            inline.parse_configured(source, definitions, options),
+            span
+          )
+        }
+      )
+      ast.Heading(level, [ast.SourceInline(source)], span) -> Some(
+        ast.Heading(
+          level,
+          inline.parse_configured(source, definitions, options),
+          span
+        )
+      )
+      ast.BlockQuote(children, span) -> Some(
+        ast.BlockQuote(_resolve_blocks(children, definitions, options), span)
+      )
+      ast.ListBlock(ordered, start, tight, items, span) -> {
+        let items = list.map(items, fn(item) {
+          _resolve_item(item, definitions, options)
+        })
+        Some(ast.ListBlock(ordered, start, tight, items, span))
+      }
+      _ -> Some(block)
+    }
+  })
+}
+
+_start_trim(value: String) -> String {
+  text.chars(value) |> list.drop_while(fn(c) { c == " " || c == "\t" }) |> string.join(
+    ""
+  )
+}
+
+_resolve_item(
+  item: ast.ListItem,
+  definitions: List(links.Definition),
+  options: syntax.Options
+) -> ast.ListItem {
+  let task = match #(options.task_lists, item.blocks) {
+    #(True, [ast.Paragraph([ast.SourceInline(source)], span), ..rest]) -> match text.chars(
+      source
+    ) {
+      ["[", mark, "]", next, ..after] if (
+        mark == " " || mark == "x" || mark == "X"
+      ) && (next == " " || next == "\t" || next == "\n") -> {
+        let content = list.drop_while(after, fn(c) { c == " " || c == "\t" }) |> string.join(
+          ""
+        )
+        #(
+          Some(mark != " "),
+          [ast.Paragraph([ast.SourceInline(content)], span), ..rest]
+        )
+      }
+      _ -> #(None, item.blocks)
+    }
+    _ -> #(None, item.blocks)
+  }
+  ast.ListItem(_resolve_blocks(task.1, definitions, options), item.span, task.0)
+}

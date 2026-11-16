@@ -1,0 +1,94 @@
+// SPDX-License-Identifier: Apache-2.0
+
+//// Markdown gets a shape before it gets a costume. Blocks retain addresses
+//// in the original UTF-8 source; inline nodes retain the distinctions a renderer
+//// needs without keeping the spelling of every delimiter.
+////
+//// ```pooka
+//// let text = ast.Text("owl")
+//// let emphasis = ast.Emphasis([text])
+//// ```
+module ast
+
+/// Lines and columns count from one; byte offsets count from zero.
+class Position(line: Int, column: Int, byte_offset: Int)
+
+/// A half-open interval: the end is just past the last source character.
+class Span(start: Position, end: Position)
+
+/// Block children are ordered exactly as they appeared in the source.
+class Document(blocks: List(Block))
+
+class Block {}
+
+class Paragraph(content: List(Inline), span: Span) is Block
+
+class Heading(level: Int, content: List(Inline), span: Span) is Block
+
+class ThematicBreak(span: Span) is Block
+
+class CodeBlock(code: String, info: String, span: Span) is Block
+
+class BlockQuote(blocks: List(Block), span: Span) is Block
+
+/// A list owns its marker family and tightness; nested lists decide their own.
+class ListBlock(
+  ordered: Bool,
+  start: Int,
+  tight: Bool,
+  items: List(ListItem),
+  span: Span
+) is Block
+
+/// Item children remain ordinary blocks, including nested lists and code.
+class ListItem(blocks: List(Block), span: Span, checked: Option(Bool))
+
+/// Reference definitions disappear after the document-wide resolution pass.
+class ReferenceDefinition(
+  label: String,
+  destination: String,
+  title: String,
+  span: Span
+) is Block
+
+/// The block pass defers inline parsing until every definition is known.
+class SourceInline(source: String) is Inline
+
+class RawBlock(html: String, span: Span) is Block
+
+class Inline {}
+
+class Text(value: String) is Inline
+
+class Code(value: String) is Inline
+
+class SoftBreak is Inline {}
+
+class HardBreak is Inline {}
+
+class Emphasis(content: List(Inline)) is Inline
+
+class Strong(content: List(Inline)) is Inline
+
+class Link(content: List(Inline), destination: String, title: String) is Inline
+
+class Image(description: List(Inline), destination: String, title: String) is Inline
+
+class RawInline(html: String) is Inline
+
+/// Column alignment is semantic, not CSS supplied by the source document.
+enum Alignment {
+  Default
+  Left
+  Center
+  Right
+}
+
+class Table(
+  alignments: List(Alignment),
+  header: List(List(Inline)),
+  rows: List(List(List(Inline))),
+  span: Span
+) is Block
+
+class Strikethrough(content: List(Inline)) is Inline

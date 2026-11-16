@@ -1,0 +1,388 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+// Cases from CommonMark 0.31.2. The upstream expected HTML is unchanged.
+// Skipped cases are known gaps, not accepted variations of the standard.
+module commonmark_html_blocks_test
+
+import marksy
+import marksy/html
+import poke/should
+
+test "CommonMark 148: HTML blocks" {
+  let source = "<table><tr><td>\n<pre>\n**Hello**,\n\n_world_.\n</pre>\n</td></tr></table>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<table><tr><td>\n<pre>\n**Hello**,\n<p><em>world</em>.\n</pre></p>\n</td></tr></table>\n"
+  )
+}
+
+test "CommonMark 149: HTML blocks" {
+  let source = "<table>\n  <tr>\n    <td>\n           hi\n    </td>\n  </tr>\n</table>\n\nokay.\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<table>\n  <tr>\n    <td>\n           hi\n    </td>\n  </tr>\n</table>\n<p>okay.</p>\n"
+  )
+}
+
+test "CommonMark 150: HTML blocks" {
+  let source = " <div>\n  *hello*\n         <foo><a>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, " <div>\n  *hello*\n         <foo><a>\n")
+}
+
+test "CommonMark 151: HTML blocks" {
+  let source = "</div>\n*foo*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "</div>\n*foo*\n")
+}
+
+test "CommonMark 152: HTML blocks" {
+  let source = "<DIV CLASS=\"foo\">\n\n*Markdown*\n\n</DIV>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<DIV CLASS=\"foo\">\n<p><em>Markdown</em></p>\n</DIV>\n"
+  )
+}
+
+test "CommonMark 153: HTML blocks" {
+  let source = "<div id=\"foo\"\n  class=\"bar\">\n</div>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<div id=\"foo\"\n  class=\"bar\">\n</div>\n")
+}
+
+test "CommonMark 154: HTML blocks" {
+  let source = "<div id=\"foo\" class=\"bar\n  baz\">\n</div>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<div id=\"foo\" class=\"bar\n  baz\">\n</div>\n")
+}
+
+test "CommonMark 155: HTML blocks" {
+  let source = "<div>\n*foo*\n\n*bar*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<div>\n*foo*\n<p><em>bar</em></p>\n")
+}
+
+test "CommonMark 156: HTML blocks" {
+  let source = "<div id=\"foo\"\n*hi*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<div id=\"foo\"\n*hi*\n")
+}
+
+test "CommonMark 157: HTML blocks" {
+  let source = "<div class\nfoo\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<div class\nfoo\n")
+}
+
+test "CommonMark 158: HTML blocks" {
+  let source = "<div *???-&&&-<---\n*foo*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<div *???-&&&-<---\n*foo*\n")
+}
+
+test "CommonMark 159: HTML blocks" {
+  let source = "<div><a href=\"bar\">*foo*</a></div>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<div><a href=\"bar\">*foo*</a></div>\n")
+}
+
+test "CommonMark 160: HTML blocks" {
+  let source = "<table><tr><td>\nfoo\n</td></tr></table>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<table><tr><td>\nfoo\n</td></tr></table>\n")
+}
+
+test "CommonMark 161: HTML blocks" {
+  let source = "<div></div>\n``` c\nint x = 33;\n```\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<div></div>\n``` c\nint x = 33;\n```\n")
+}
+
+test "CommonMark 162: HTML blocks" {
+  let source = "<a href=\"foo\">\n*bar*\n</a>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<a href=\"foo\">\n*bar*\n</a>\n")
+}
+
+test "CommonMark 163: HTML blocks" {
+  let source = "<Warning>\n*bar*\n</Warning>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<Warning>\n*bar*\n</Warning>\n")
+}
+
+test "CommonMark 164: HTML blocks" {
+  let source = "<i class=\"foo\">\n*bar*\n</i>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<i class=\"foo\">\n*bar*\n</i>\n")
+}
+
+test "CommonMark 165: HTML blocks" {
+  let source = "</ins>\n*bar*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "</ins>\n*bar*\n")
+}
+
+test "CommonMark 166: HTML blocks" {
+  let source = "<del>\n*foo*\n</del>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<del>\n*foo*\n</del>\n")
+}
+
+test "CommonMark 167: HTML blocks" {
+  let source = "<del>\n\n*foo*\n\n</del>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<del>\n<p><em>foo</em></p>\n</del>\n")
+}
+
+test "CommonMark 168: HTML blocks" {
+  let source = "<del>*foo*</del>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><del><em>foo</em></del></p>\n")
+}
+
+test "CommonMark 169: HTML blocks" {
+  let source = "<pre language=\"haskell\"><code>\nimport Text.HTML.TagSoup\n\nmain :: IO ()\nmain = print $ parseTags tags\n</code></pre>\nokay\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<pre language=\"haskell\"><code>\nimport Text.HTML.TagSoup\n\nmain :: IO ()\nmain = print $ parseTags tags\n</code></pre>\n<p>okay</p>\n"
+  )
+}
+
+test "CommonMark 170: HTML blocks" {
+  let source = "<script type=\"text/javascript\">\n// JavaScript example\n\ndocument.getElementById(\"demo\").innerHTML = \"Hello JavaScript!\";\n</script>\nokay\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<script type=\"text/javascript\">\n// JavaScript example\n\ndocument.getElementById(\"demo\").innerHTML = \"Hello JavaScript!\";\n</script>\n<p>okay</p>\n"
+  )
+}
+
+test "CommonMark 171: HTML blocks" {
+  let source = "<textarea>\n\n*foo*\n\n_bar_\n\n</textarea>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<textarea>\n\n*foo*\n\n_bar_\n\n</textarea>\n")
+}
+
+test "CommonMark 172: HTML blocks" {
+  let source = "<style\n  type=\"text/css\">\nh1 {color:red;}\n\np {color:blue;}\n</style>\nokay\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<style\n  type=\"text/css\">\nh1 {color:red;}\n\np {color:blue;}\n</style>\n<p>okay</p>\n"
+  )
+}
+
+test "CommonMark 173: HTML blocks" {
+  let source = "<style\n  type=\"text/css\">\n\nfoo\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<style\n  type=\"text/css\">\n\nfoo\n")
+}
+
+test "CommonMark 174: HTML blocks" {
+  let source = "> <div>\n> foo\n\nbar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<blockquote>\n<div>\nfoo\n</blockquote>\n<p>bar</p>\n")
+}
+
+test "CommonMark 175: HTML blocks" {
+  let source = "- <div>\n- foo\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<ul>\n<li>\n<div>\n</li>\n<li>foo</li>\n</ul>\n")
+}
+
+test "CommonMark 176: HTML blocks" {
+  let source = "<style>p{color:red;}</style>\n*foo*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<style>p{color:red;}</style>\n<p><em>foo</em></p>\n")
+}
+
+test "CommonMark 177: HTML blocks" {
+  let source = "<!-- foo -->*bar*\n*baz*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<!-- foo -->*bar*\n<p><em>baz</em></p>\n")
+}
+
+test "CommonMark 178: HTML blocks" {
+  let source = "<script>\nfoo\n</script>1. *bar*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<script>\nfoo\n</script>1. *bar*\n")
+}
+
+test "CommonMark 179: HTML blocks" {
+  let source = "<!-- Foo\n\nbar\n   baz -->\nokay\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<!-- Foo\n\nbar\n   baz -->\n<p>okay</p>\n")
+}
+
+test "CommonMark 180: HTML blocks" {
+  let source = "<?php\n\n  echo '>';\n\n?>\nokay\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<?php\n\n  echo '>';\n\n?>\n<p>okay</p>\n")
+}
+
+test "CommonMark 181: HTML blocks" {
+  let source = "<!DOCTYPE html>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<!DOCTYPE html>\n")
+}
+
+test "CommonMark 182: HTML blocks" {
+  let source = "<![CDATA[\nfunction matchwo(a,b)\n{\n  if (a < b && a < 0) then {\n    return 1;\n\n  } else {\n\n    return 0;\n  }\n}\n]]>\nokay\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<![CDATA[\nfunction matchwo(a,b)\n{\n  if (a < b && a < 0) then {\n    return 1;\n\n  } else {\n\n    return 0;\n  }\n}\n]]>\n<p>okay</p>\n"
+  )
+}
+
+test "CommonMark 183: HTML blocks" {
+  let source = "  <!-- foo -->\n\n    <!-- foo -->\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "  <!-- foo -->\n<pre><code>&lt;!-- foo --&gt;\n</code></pre>\n"
+  )
+}
+
+test "CommonMark 184: HTML blocks" {
+  let source = "  <div>\n\n    <div>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "  <div>\n<pre><code>&lt;div&gt;\n</code></pre>\n")
+}
+
+test "CommonMark 185: HTML blocks" {
+  let source = "Foo\n<div>\nbar\n</div>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>Foo</p>\n<div>\nbar\n</div>\n")
+}
+
+test "CommonMark 186: HTML blocks" {
+  let source = "<div>\nbar\n</div>\n*foo*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<div>\nbar\n</div>\n*foo*\n")
+}
+
+test "CommonMark 187: HTML blocks" {
+  let source = "Foo\n<a href=\"bar\">\nbaz\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>Foo\n<a href=\"bar\">\nbaz</p>\n")
+}
+
+test "CommonMark 188: HTML blocks" {
+  let source = "<div>\n\n*Emphasized* text.\n\n</div>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<div>\n<p><em>Emphasized</em> text.</p>\n</div>\n")
+}
+
+test "CommonMark 189: HTML blocks" {
+  let source = "<div>\n*Emphasized* text.\n</div>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<div>\n*Emphasized* text.\n</div>\n")
+}
+
+test "CommonMark 190: HTML blocks" {
+  let source = "<table>\n\n<tr>\n\n<td>\nHi\n</td>\n\n</tr>\n\n</table>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<table>\n<tr>\n<td>\nHi\n</td>\n</tr>\n</table>\n")
+}
+
+test "CommonMark 191: HTML blocks" {
+  let source = "<table>\n\n  <tr>\n\n    <td>\n      Hi\n    </td>\n\n  </tr>\n\n</table>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<table>\n  <tr>\n<pre><code>&lt;td&gt;\n  Hi\n&lt;/td&gt;\n</code></pre>\n  </tr>\n</table>\n"
+  )
+}

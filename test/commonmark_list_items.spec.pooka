@@ -1,0 +1,471 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+// Cases from CommonMark 0.31.2. The upstream expected HTML is unchanged.
+// Skipped cases are known gaps, not accepted variations of the standard.
+module commonmark_list_items_test
+
+import marksy
+import marksy/html
+import poke/should
+
+test "CommonMark 253: List items" {
+  let source = "A paragraph\nwith two lines.\n\n    indented code\n\n> A block quote.\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p>A paragraph\nwith two lines.</p>\n<pre><code>indented code\n</code></pre>\n<blockquote>\n<p>A block quote.</p>\n</blockquote>\n"
+  )
+}
+
+test "CommonMark 254: List items" {
+  let source = "1.  A paragraph\n    with two lines.\n\n        indented code\n\n    > A block quote.\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<ol>\n<li>\n<p>A paragraph\nwith two lines.</p>\n<pre><code>indented code\n</code></pre>\n<blockquote>\n<p>A block quote.</p>\n</blockquote>\n</li>\n</ol>\n"
+  )
+}
+
+test "CommonMark 255: List items" {
+  let source = "- one\n\n two\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<ul>\n<li>one</li>\n</ul>\n<p>two</p>\n")
+}
+
+test "CommonMark 256: List items" {
+  let source = "- one\n\n  two\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<ul>\n<li>\n<p>one</p>\n<p>two</p>\n</li>\n</ul>\n")
+}
+
+test "CommonMark 257: List items" {
+  let source = " -    one\n\n     two\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<ul>\n<li>one</li>\n</ul>\n<pre><code> two\n</code></pre>\n"
+  )
+}
+
+test "CommonMark 258: List items" {
+  let source = " -    one\n\n      two\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<ul>\n<li>\n<p>one</p>\n<p>two</p>\n</li>\n</ul>\n")
+}
+
+test "CommonMark 259: List items" {
+  let source = "   > > 1.  one\n>>\n>>     two\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<blockquote>\n<blockquote>\n<ol>\n<li>\n<p>one</p>\n<p>two</p>\n</li>\n</ol>\n</blockquote>\n</blockquote>\n"
+  )
+}
+
+test "CommonMark 260: List items" {
+  let source = ">>- one\n>>\n  >  > two\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<blockquote>\n<blockquote>\n<ul>\n<li>one</li>\n</ul>\n<p>two</p>\n</blockquote>\n</blockquote>\n"
+  )
+}
+
+test "CommonMark 261: List items" {
+  let source = "-one\n\n2.two\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>-one</p>\n<p>2.two</p>\n")
+}
+
+test "CommonMark 262: List items" {
+  let source = "- foo\n\n\n  bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<ul>\n<li>\n<p>foo</p>\n<p>bar</p>\n</li>\n</ul>\n")
+}
+
+test "CommonMark 263: List items" {
+  let source = "1.  foo\n\n    ```\n    bar\n    ```\n\n    baz\n\n    > bam\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<ol>\n<li>\n<p>foo</p>\n<pre><code>bar\n</code></pre>\n<p>baz</p>\n<blockquote>\n<p>bam</p>\n</blockquote>\n</li>\n</ol>\n"
+  )
+}
+
+test "CommonMark 264: List items" {
+  let source = "- Foo\n\n      bar\n\n\n      baz\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<ul>\n<li>\n<p>Foo</p>\n<pre><code>bar\n\n\nbaz\n</code></pre>\n</li>\n</ul>\n"
+  )
+}
+
+test "CommonMark 265: List items" {
+  let source = "123456789. ok\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<ol start=\"123456789\">\n<li>ok</li>\n</ol>\n")
+}
+
+test "CommonMark 266: List items" {
+  let source = "1234567890. not ok\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>1234567890. not ok</p>\n")
+}
+
+test "CommonMark 267: List items" {
+  let source = "0. ok\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<ol start=\"0\">\n<li>ok</li>\n</ol>\n")
+}
+
+test "CommonMark 268: List items" {
+  let source = "003. ok\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<ol start=\"3\">\n<li>ok</li>\n</ol>\n")
+}
+
+test "CommonMark 269: List items" {
+  let source = "-1. not ok\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>-1. not ok</p>\n")
+}
+
+test "CommonMark 270: List items" {
+  let source = "- foo\n\n      bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<ul>\n<li>\n<p>foo</p>\n<pre><code>bar\n</code></pre>\n</li>\n</ul>\n"
+  )
+}
+
+test "CommonMark 271: List items" {
+  let source = "  10.  foo\n\n           bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<ol start=\"10\">\n<li>\n<p>foo</p>\n<pre><code>bar\n</code></pre>\n</li>\n</ol>\n"
+  )
+}
+
+test "CommonMark 272: List items" {
+  let source = "    indented code\n\nparagraph\n\n    more code\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<pre><code>indented code\n</code></pre>\n<p>paragraph</p>\n<pre><code>more code\n</code></pre>\n"
+  )
+}
+
+test "CommonMark 273: List items" {
+  let source = "1.     indented code\n\n   paragraph\n\n       more code\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<ol>\n<li>\n<pre><code>indented code\n</code></pre>\n<p>paragraph</p>\n<pre><code>more code\n</code></pre>\n</li>\n</ol>\n"
+  )
+}
+
+test "CommonMark 274: List items" {
+  let source = "1.      indented code\n\n   paragraph\n\n       more code\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<ol>\n<li>\n<pre><code> indented code\n</code></pre>\n<p>paragraph</p>\n<pre><code>more code\n</code></pre>\n</li>\n</ol>\n"
+  )
+}
+
+test "CommonMark 275: List items" {
+  let source = "   foo\n\nbar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo</p>\n<p>bar</p>\n")
+}
+
+test "CommonMark 276: List items" {
+  let source = "-    foo\n\n  bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<ul>\n<li>foo</li>\n</ul>\n<p>bar</p>\n")
+}
+
+test "CommonMark 277: List items" {
+  let source = "-  foo\n\n   bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<ul>\n<li>\n<p>foo</p>\n<p>bar</p>\n</li>\n</ul>\n")
+}
+
+test "CommonMark 278: List items" {
+  let source = "-\n  foo\n-\n  ```\n  bar\n  ```\n-\n      baz\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<ul>\n<li>foo</li>\n<li>\n<pre><code>bar\n</code></pre>\n</li>\n<li>\n<pre><code>baz\n</code></pre>\n</li>\n</ul>\n"
+  )
+}
+
+test "CommonMark 279: List items" {
+  let source = "-   \n  foo\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<ul>\n<li>foo</li>\n</ul>\n")
+}
+
+test "CommonMark 280: List items" {
+  let source = "-\n\n  foo\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<ul>\n<li></li>\n</ul>\n<p>foo</p>\n")
+}
+
+test "CommonMark 281: List items" {
+  let source = "- foo\n-\n- bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<ul>\n<li>foo</li>\n<li></li>\n<li>bar</li>\n</ul>\n")
+}
+
+test "CommonMark 282: List items" {
+  let source = "- foo\n-   \n- bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<ul>\n<li>foo</li>\n<li></li>\n<li>bar</li>\n</ul>\n")
+}
+
+test "CommonMark 283: List items" {
+  let source = "1. foo\n2.\n3. bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<ol>\n<li>foo</li>\n<li></li>\n<li>bar</li>\n</ol>\n")
+}
+
+test "CommonMark 284: List items" {
+  let source = "*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<ul>\n<li></li>\n</ul>\n")
+}
+
+test "CommonMark 285: List items" {
+  let source = "foo\n*\n\nfoo\n1.\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo\n*</p>\n<p>foo\n1.</p>\n")
+}
+
+test "CommonMark 286: List items" {
+  let source = " 1.  A paragraph\n     with two lines.\n\n         indented code\n\n     > A block quote.\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<ol>\n<li>\n<p>A paragraph\nwith two lines.</p>\n<pre><code>indented code\n</code></pre>\n<blockquote>\n<p>A block quote.</p>\n</blockquote>\n</li>\n</ol>\n"
+  )
+}
+
+test "CommonMark 287: List items" {
+  let source = "  1.  A paragraph\n      with two lines.\n\n          indented code\n\n      > A block quote.\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<ol>\n<li>\n<p>A paragraph\nwith two lines.</p>\n<pre><code>indented code\n</code></pre>\n<blockquote>\n<p>A block quote.</p>\n</blockquote>\n</li>\n</ol>\n"
+  )
+}
+
+test "CommonMark 288: List items" {
+  let source = "   1.  A paragraph\n       with two lines.\n\n           indented code\n\n       > A block quote.\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<ol>\n<li>\n<p>A paragraph\nwith two lines.</p>\n<pre><code>indented code\n</code></pre>\n<blockquote>\n<p>A block quote.</p>\n</blockquote>\n</li>\n</ol>\n"
+  )
+}
+
+test "CommonMark 289: List items" {
+  let source = "    1.  A paragraph\n        with two lines.\n\n            indented code\n\n        > A block quote.\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<pre><code>1.  A paragraph\n    with two lines.\n\n        indented code\n\n    &gt; A block quote.\n</code></pre>\n"
+  )
+}
+
+test "CommonMark 290: List items" {
+  let source = "  1.  A paragraph\nwith two lines.\n\n          indented code\n\n      > A block quote.\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<ol>\n<li>\n<p>A paragraph\nwith two lines.</p>\n<pre><code>indented code\n</code></pre>\n<blockquote>\n<p>A block quote.</p>\n</blockquote>\n</li>\n</ol>\n"
+  )
+}
+
+test "CommonMark 291: List items" {
+  let source = "  1.  A paragraph\n    with two lines.\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<ol>\n<li>A paragraph\nwith two lines.</li>\n</ol>\n")
+}
+
+test "CommonMark 292: List items" {
+  let source = "> 1. > Blockquote\ncontinued here.\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<blockquote>\n<ol>\n<li>\n<blockquote>\n<p>Blockquote\ncontinued here.</p>\n</blockquote>\n</li>\n</ol>\n</blockquote>\n"
+  )
+}
+
+test "CommonMark 293: List items" {
+  let source = "> 1. > Blockquote\n> continued here.\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<blockquote>\n<ol>\n<li>\n<blockquote>\n<p>Blockquote\ncontinued here.</p>\n</blockquote>\n</li>\n</ol>\n</blockquote>\n"
+  )
+}
+
+test "CommonMark 294: List items" {
+  let source = "- foo\n  - bar\n    - baz\n      - boo\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<ul>\n<li>foo\n<ul>\n<li>bar\n<ul>\n<li>baz\n<ul>\n<li>boo</li>\n</ul>\n</li>\n</ul>\n</li>\n</ul>\n</li>\n</ul>\n"
+  )
+}
+
+test "CommonMark 295: List items" {
+  let source = "- foo\n - bar\n  - baz\n   - boo\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<ul>\n<li>foo</li>\n<li>bar</li>\n<li>baz</li>\n<li>boo</li>\n</ul>\n"
+  )
+}
+
+test "CommonMark 296: List items" {
+  let source = "10) foo\n    - bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<ol start=\"10\">\n<li>foo\n<ul>\n<li>bar</li>\n</ul>\n</li>\n</ol>\n"
+  )
+}
+
+test "CommonMark 297: List items" {
+  let source = "10) foo\n   - bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<ol start=\"10\">\n<li>foo</li>\n</ol>\n<ul>\n<li>bar</li>\n</ul>\n"
+  )
+}
+
+test "CommonMark 298: List items" {
+  let source = "- - foo\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<ul>\n<li>\n<ul>\n<li>foo</li>\n</ul>\n</li>\n</ul>\n")
+}
+
+test "CommonMark 299: List items" {
+  let source = "1. - 2. foo\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<ol>\n<li>\n<ul>\n<li>\n<ol start=\"2\">\n<li>foo</li>\n</ol>\n</li>\n</ul>\n</li>\n</ol>\n"
+  )
+}
+
+test "CommonMark 300: List items" {
+  let source = "- # Foo\n- Bar\n  ---\n  baz\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<ul>\n<li>\n<h1>Foo</h1>\n</li>\n<li>\n<h2>Bar</h2>\nbaz</li>\n</ul>\n"
+  )
+}

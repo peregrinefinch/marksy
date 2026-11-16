@@ -1,0 +1,248 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+// Cases from CommonMark 0.31.2. The upstream expected HTML is unchanged.
+// Skipped cases are known gaps, not accepted variations of the standard.
+module commonmark_block_quotes_test
+
+import marksy
+import marksy/html
+import poke/should
+
+test "CommonMark 228: Block quotes" {
+  let source = "> # Foo\n> bar\n> baz\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<blockquote>\n<h1>Foo</h1>\n<p>bar\nbaz</p>\n</blockquote>\n"
+  )
+}
+
+test "CommonMark 229: Block quotes" {
+  let source = "># Foo\n>bar\n> baz\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<blockquote>\n<h1>Foo</h1>\n<p>bar\nbaz</p>\n</blockquote>\n"
+  )
+}
+
+test "CommonMark 230: Block quotes" {
+  let source = "   > # Foo\n   > bar\n > baz\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<blockquote>\n<h1>Foo</h1>\n<p>bar\nbaz</p>\n</blockquote>\n"
+  )
+}
+
+test "CommonMark 231: Block quotes" {
+  let source = "    > # Foo\n    > bar\n    > baz\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<pre><code>&gt; # Foo\n&gt; bar\n&gt; baz\n</code></pre>\n"
+  )
+}
+
+test "CommonMark 232: Block quotes" {
+  let source = "> # Foo\n> bar\nbaz\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<blockquote>\n<h1>Foo</h1>\n<p>bar\nbaz</p>\n</blockquote>\n"
+  )
+}
+
+test "CommonMark 233: Block quotes" {
+  let source = "> bar\nbaz\n> foo\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<blockquote>\n<p>bar\nbaz\nfoo</p>\n</blockquote>\n")
+}
+
+test "CommonMark 234: Block quotes" {
+  let source = "> foo\n---\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<blockquote>\n<p>foo</p>\n</blockquote>\n<hr />\n")
+}
+
+test "CommonMark 235: Block quotes" {
+  let source = "> - foo\n- bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<blockquote>\n<ul>\n<li>foo</li>\n</ul>\n</blockquote>\n<ul>\n<li>bar</li>\n</ul>\n"
+  )
+}
+
+test "CommonMark 236: Block quotes" {
+  let source = ">     foo\n    bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<blockquote>\n<pre><code>foo\n</code></pre>\n</blockquote>\n<pre><code>bar\n</code></pre>\n"
+  )
+}
+
+test "CommonMark 237: Block quotes" {
+  let source = "> ```\nfoo\n```\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<blockquote>\n<pre><code></code></pre>\n</blockquote>\n<p>foo</p>\n<pre><code></code></pre>\n"
+  )
+}
+
+test "CommonMark 238: Block quotes" {
+  let source = "> foo\n    - bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<blockquote>\n<p>foo\n- bar</p>\n</blockquote>\n")
+}
+
+test "CommonMark 239: Block quotes" {
+  let source = ">\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<blockquote>\n</blockquote>\n")
+}
+
+test "CommonMark 240: Block quotes" {
+  let source = ">\n>  \n> \n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<blockquote>\n</blockquote>\n")
+}
+
+test "CommonMark 241: Block quotes" {
+  let source = ">\n> foo\n>  \n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<blockquote>\n<p>foo</p>\n</blockquote>\n")
+}
+
+test "CommonMark 242: Block quotes" {
+  let source = "> foo\n\n> bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<blockquote>\n<p>foo</p>\n</blockquote>\n<blockquote>\n<p>bar</p>\n</blockquote>\n"
+  )
+}
+
+test "CommonMark 243: Block quotes" {
+  let source = "> foo\n> bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<blockquote>\n<p>foo\nbar</p>\n</blockquote>\n")
+}
+
+test "CommonMark 244: Block quotes" {
+  let source = "> foo\n>\n> bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<blockquote>\n<p>foo</p>\n<p>bar</p>\n</blockquote>\n")
+}
+
+test "CommonMark 245: Block quotes" {
+  let source = "foo\n> bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo</p>\n<blockquote>\n<p>bar</p>\n</blockquote>\n")
+}
+
+test "CommonMark 246: Block quotes" {
+  let source = "> aaa\n***\n> bbb\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<blockquote>\n<p>aaa</p>\n</blockquote>\n<hr />\n<blockquote>\n<p>bbb</p>\n</blockquote>\n"
+  )
+}
+
+test "CommonMark 247: Block quotes" {
+  let source = "> bar\nbaz\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<blockquote>\n<p>bar\nbaz</p>\n</blockquote>\n")
+}
+
+test "CommonMark 248: Block quotes" {
+  let source = "> bar\n\nbaz\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<blockquote>\n<p>bar</p>\n</blockquote>\n<p>baz</p>\n")
+}
+
+test "CommonMark 249: Block quotes" {
+  let source = "> bar\n>\nbaz\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<blockquote>\n<p>bar</p>\n</blockquote>\n<p>baz</p>\n")
+}
+
+test "CommonMark 250: Block quotes" {
+  let source = "> > > foo\nbar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<blockquote>\n<blockquote>\n<blockquote>\n<p>foo\nbar</p>\n</blockquote>\n</blockquote>\n</blockquote>\n"
+  )
+}
+
+test "CommonMark 251: Block quotes" {
+  let source = ">>> foo\n> bar\n>>baz\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<blockquote>\n<blockquote>\n<blockquote>\n<p>foo\nbar\nbaz</p>\n</blockquote>\n</blockquote>\n</blockquote>\n"
+  )
+}
+
+test "CommonMark 252: Block quotes" {
+  let source = ">     code\n\n>    not code\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<blockquote>\n<pre><code>code\n</code></pre>\n</blockquote>\n<blockquote>\n<p>not code</p>\n</blockquote>\n"
+  )
+}

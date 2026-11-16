@@ -1,0 +1,1107 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+// Cases from CommonMark 0.31.2. The upstream expected HTML is unchanged.
+// Skipped cases are known gaps, not accepted variations of the standard.
+module commonmark_emphasis_and_strong_emphasis_test
+
+import marksy
+import marksy/html
+import poke/should
+
+test "CommonMark 350: Emphasis and strong emphasis" {
+  let source = "*foo bar*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>foo bar</em></p>\n")
+}
+
+test "CommonMark 351: Emphasis and strong emphasis" {
+  let source = "a * foo bar*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>a * foo bar*</p>\n")
+}
+
+test "CommonMark 352: Emphasis and strong emphasis" {
+  let source = "a*\"foo\"*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>a*&quot;foo&quot;*</p>\n")
+}
+
+test "CommonMark 353: Emphasis and strong emphasis" {
+  let source = "* a *\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>* a *</p>\n")
+}
+
+test "CommonMark 354: Emphasis and strong emphasis" {
+  let source = "*$*alpha.\n\n*£*bravo.\n\n*€*charlie.\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p>*$*alpha.</p>\n<p>*£*bravo.</p>\n<p>*€*charlie.</p>\n"
+  )
+}
+
+test "CommonMark 355: Emphasis and strong emphasis" {
+  let source = "foo*bar*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo<em>bar</em></p>\n")
+}
+
+test "CommonMark 356: Emphasis and strong emphasis" {
+  let source = "5*6*78\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>5<em>6</em>78</p>\n")
+}
+
+test "CommonMark 357: Emphasis and strong emphasis" {
+  let source = "_foo bar_\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>foo bar</em></p>\n")
+}
+
+test "CommonMark 358: Emphasis and strong emphasis" {
+  let source = "_ foo bar_\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>_ foo bar_</p>\n")
+}
+
+test "CommonMark 359: Emphasis and strong emphasis" {
+  let source = "a_\"foo\"_\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>a_&quot;foo&quot;_</p>\n")
+}
+
+test "CommonMark 360: Emphasis and strong emphasis" {
+  let source = "foo_bar_\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo_bar_</p>\n")
+}
+
+test "CommonMark 361: Emphasis and strong emphasis" {
+  let source = "5_6_78\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>5_6_78</p>\n")
+}
+
+test "CommonMark 362: Emphasis and strong emphasis" {
+  let source = "пристаням_стремятся_\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>пристаням_стремятся_</p>\n")
+}
+
+test "CommonMark 363: Emphasis and strong emphasis" {
+  let source = "aa_\"bb\"_cc\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>aa_&quot;bb&quot;_cc</p>\n")
+}
+
+test "CommonMark 364: Emphasis and strong emphasis" {
+  let source = "foo-_(bar)_\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo-<em>(bar)</em></p>\n")
+}
+
+test "CommonMark 365: Emphasis and strong emphasis" {
+  let source = "_foo*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>_foo*</p>\n")
+}
+
+test "CommonMark 366: Emphasis and strong emphasis" {
+  let source = "*foo bar *\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>*foo bar *</p>\n")
+}
+
+test "CommonMark 367: Emphasis and strong emphasis" {
+  let source = "*foo bar\n*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>*foo bar\n*</p>\n")
+}
+
+test "CommonMark 368: Emphasis and strong emphasis" {
+  let source = "*(*foo)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>*(*foo)</p>\n")
+}
+
+test "CommonMark 369: Emphasis and strong emphasis" {
+  let source = "*(*foo*)*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>(<em>foo</em>)</em></p>\n")
+}
+
+test "CommonMark 370: Emphasis and strong emphasis" {
+  let source = "*foo*bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>foo</em>bar</p>\n")
+}
+
+test "CommonMark 371: Emphasis and strong emphasis" {
+  let source = "_foo bar _\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>_foo bar _</p>\n")
+}
+
+test "CommonMark 372: Emphasis and strong emphasis" {
+  let source = "_(_foo)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>_(_foo)</p>\n")
+}
+
+test "CommonMark 373: Emphasis and strong emphasis" {
+  let source = "_(_foo_)_\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>(<em>foo</em>)</em></p>\n")
+}
+
+test "CommonMark 374: Emphasis and strong emphasis" {
+  let source = "_foo_bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>_foo_bar</p>\n")
+}
+
+test "CommonMark 375: Emphasis and strong emphasis" {
+  let source = "_пристаням_стремятся\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>_пристаням_стремятся</p>\n")
+}
+
+test "CommonMark 376: Emphasis and strong emphasis" {
+  let source = "_foo_bar_baz_\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>foo_bar_baz</em></p>\n")
+}
+
+test "CommonMark 377: Emphasis and strong emphasis" {
+  let source = "_(bar)_.\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>(bar)</em>.</p>\n")
+}
+
+test "CommonMark 378: Emphasis and strong emphasis" {
+  let source = "**foo bar**\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><strong>foo bar</strong></p>\n")
+}
+
+test "CommonMark 379: Emphasis and strong emphasis" {
+  let source = "** foo bar**\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>** foo bar**</p>\n")
+}
+
+test "CommonMark 380: Emphasis and strong emphasis" {
+  let source = "a**\"foo\"**\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>a**&quot;foo&quot;**</p>\n")
+}
+
+test "CommonMark 381: Emphasis and strong emphasis" {
+  let source = "foo**bar**\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo<strong>bar</strong></p>\n")
+}
+
+test "CommonMark 382: Emphasis and strong emphasis" {
+  let source = "__foo bar__\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><strong>foo bar</strong></p>\n")
+}
+
+test "CommonMark 383: Emphasis and strong emphasis" {
+  let source = "__ foo bar__\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>__ foo bar__</p>\n")
+}
+
+test "CommonMark 384: Emphasis and strong emphasis" {
+  let source = "__\nfoo bar__\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>__\nfoo bar__</p>\n")
+}
+
+test "CommonMark 385: Emphasis and strong emphasis" {
+  let source = "a__\"foo\"__\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>a__&quot;foo&quot;__</p>\n")
+}
+
+test "CommonMark 386: Emphasis and strong emphasis" {
+  let source = "foo__bar__\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo__bar__</p>\n")
+}
+
+test "CommonMark 387: Emphasis and strong emphasis" {
+  let source = "5__6__78\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>5__6__78</p>\n")
+}
+
+test "CommonMark 388: Emphasis and strong emphasis" {
+  let source = "пристаням__стремятся__\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>пристаням__стремятся__</p>\n")
+}
+
+test "CommonMark 389: Emphasis and strong emphasis" {
+  let source = "__foo, __bar__, baz__\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><strong>foo, <strong>bar</strong>, baz</strong></p>\n"
+  )
+}
+
+test "CommonMark 390: Emphasis and strong emphasis" {
+  let source = "foo-__(bar)__\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo-<strong>(bar)</strong></p>\n")
+}
+
+test "CommonMark 391: Emphasis and strong emphasis" {
+  let source = "**foo bar **\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>**foo bar **</p>\n")
+}
+
+test "CommonMark 392: Emphasis and strong emphasis" {
+  let source = "**(**foo)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>**(**foo)</p>\n")
+}
+
+test "CommonMark 393: Emphasis and strong emphasis" {
+  let source = "*(**foo**)*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>(<strong>foo</strong>)</em></p>\n")
+}
+
+test "CommonMark 394: Emphasis and strong emphasis" {
+  let source = "**Gomphocarpus (*Gomphocarpus physocarpus*, syn.\n*Asclepias physocarpa*)**\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><strong>Gomphocarpus (<em>Gomphocarpus physocarpus</em>, syn.\n<em>Asclepias physocarpa</em>)</strong></p>\n"
+  )
+}
+
+test "CommonMark 395: Emphasis and strong emphasis" {
+  let source = "**foo \"*bar*\" foo**\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><strong>foo &quot;<em>bar</em>&quot; foo</strong></p>\n"
+  )
+}
+
+test "CommonMark 396: Emphasis and strong emphasis" {
+  let source = "**foo**bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><strong>foo</strong>bar</p>\n")
+}
+
+test "CommonMark 397: Emphasis and strong emphasis" {
+  let source = "__foo bar __\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>__foo bar __</p>\n")
+}
+
+test "CommonMark 398: Emphasis and strong emphasis" {
+  let source = "__(__foo)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>__(__foo)</p>\n")
+}
+
+test "CommonMark 399: Emphasis and strong emphasis" {
+  let source = "_(__foo__)_\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>(<strong>foo</strong>)</em></p>\n")
+}
+
+test "CommonMark 400: Emphasis and strong emphasis" {
+  let source = "__foo__bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>__foo__bar</p>\n")
+}
+
+test "CommonMark 401: Emphasis and strong emphasis" {
+  let source = "__пристаням__стремятся\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>__пристаням__стремятся</p>\n")
+}
+
+test "CommonMark 402: Emphasis and strong emphasis" {
+  let source = "__foo__bar__baz__\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><strong>foo__bar__baz</strong></p>\n")
+}
+
+test "CommonMark 403: Emphasis and strong emphasis" {
+  let source = "__(bar)__.\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><strong>(bar)</strong>.</p>\n")
+}
+
+test "CommonMark 404: Emphasis and strong emphasis" {
+  let source = "*foo [bar](/url)*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>foo <a href=\"/url\">bar</a></em></p>\n")
+}
+
+test "CommonMark 405: Emphasis and strong emphasis" {
+  let source = "*foo\nbar*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>foo\nbar</em></p>\n")
+}
+
+test "CommonMark 406: Emphasis and strong emphasis" {
+  let source = "_foo __bar__ baz_\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>foo <strong>bar</strong> baz</em></p>\n")
+}
+
+test "CommonMark 407: Emphasis and strong emphasis" {
+  let source = "_foo _bar_ baz_\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>foo <em>bar</em> baz</em></p>\n")
+}
+
+test "CommonMark 408: Emphasis and strong emphasis" {
+  let source = "__foo_ bar_\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em><em>foo</em> bar</em></p>\n")
+}
+
+test "CommonMark 409: Emphasis and strong emphasis" {
+  let source = "*foo *bar**\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>foo <em>bar</em></em></p>\n")
+}
+
+test "CommonMark 410: Emphasis and strong emphasis" {
+  let source = "*foo **bar** baz*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>foo <strong>bar</strong> baz</em></p>\n")
+}
+
+test "CommonMark 411: Emphasis and strong emphasis" {
+  let source = "*foo**bar**baz*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>foo<strong>bar</strong>baz</em></p>\n")
+}
+
+test "CommonMark 412: Emphasis and strong emphasis" {
+  let source = "*foo**bar*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>foo**bar</em></p>\n")
+}
+
+test "CommonMark 413: Emphasis and strong emphasis" {
+  let source = "***foo** bar*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em><strong>foo</strong> bar</em></p>\n")
+}
+
+test "CommonMark 414: Emphasis and strong emphasis" {
+  let source = "*foo **bar***\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>foo <strong>bar</strong></em></p>\n")
+}
+
+test "CommonMark 415: Emphasis and strong emphasis" {
+  let source = "*foo**bar***\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>foo<strong>bar</strong></em></p>\n")
+}
+
+test "CommonMark 416: Emphasis and strong emphasis" {
+  let source = "foo***bar***baz\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo<em><strong>bar</strong></em>baz</p>\n")
+}
+
+test "CommonMark 417: Emphasis and strong emphasis" {
+  let source = "foo******bar*********baz\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p>foo<strong><strong><strong>bar</strong></strong></strong>***baz</p>\n"
+  )
+}
+
+test "CommonMark 418: Emphasis and strong emphasis" {
+  let source = "*foo **bar *baz* bim** bop*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><em>foo <strong>bar <em>baz</em> bim</strong> bop</em></p>\n"
+  )
+}
+
+test "CommonMark 419: Emphasis and strong emphasis" {
+  let source = "*foo [*bar*](/url)*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><em>foo <a href=\"/url\"><em>bar</em></a></em></p>\n"
+  )
+}
+
+test "CommonMark 420: Emphasis and strong emphasis" {
+  let source = "** is not an empty emphasis\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>** is not an empty emphasis</p>\n")
+}
+
+test "CommonMark 421: Emphasis and strong emphasis" {
+  let source = "**** is not an empty strong emphasis\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>**** is not an empty strong emphasis</p>\n")
+}
+
+test "CommonMark 422: Emphasis and strong emphasis" {
+  let source = "**foo [bar](/url)**\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><strong>foo <a href=\"/url\">bar</a></strong></p>\n")
+}
+
+test "CommonMark 423: Emphasis and strong emphasis" {
+  let source = "**foo\nbar**\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><strong>foo\nbar</strong></p>\n")
+}
+
+test "CommonMark 424: Emphasis and strong emphasis" {
+  let source = "__foo _bar_ baz__\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><strong>foo <em>bar</em> baz</strong></p>\n")
+}
+
+test "CommonMark 425: Emphasis and strong emphasis" {
+  let source = "__foo __bar__ baz__\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><strong>foo <strong>bar</strong> baz</strong></p>\n")
+}
+
+test "CommonMark 426: Emphasis and strong emphasis" {
+  let source = "____foo__ bar__\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><strong><strong>foo</strong> bar</strong></p>\n")
+}
+
+test "CommonMark 427: Emphasis and strong emphasis" {
+  let source = "**foo **bar****\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><strong>foo <strong>bar</strong></strong></p>\n")
+}
+
+test "CommonMark 428: Emphasis and strong emphasis" {
+  let source = "**foo *bar* baz**\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><strong>foo <em>bar</em> baz</strong></p>\n")
+}
+
+test "CommonMark 429: Emphasis and strong emphasis" {
+  let source = "**foo*bar*baz**\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><strong>foo<em>bar</em>baz</strong></p>\n")
+}
+
+test "CommonMark 430: Emphasis and strong emphasis" {
+  let source = "***foo* bar**\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><strong><em>foo</em> bar</strong></p>\n")
+}
+
+test "CommonMark 431: Emphasis and strong emphasis" {
+  let source = "**foo *bar***\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><strong>foo <em>bar</em></strong></p>\n")
+}
+
+test "CommonMark 432: Emphasis and strong emphasis" {
+  let source = "**foo *bar **baz**\nbim* bop**\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><strong>foo <em>bar <strong>baz</strong>\nbim</em> bop</strong></p>\n"
+  )
+}
+
+test "CommonMark 433: Emphasis and strong emphasis" {
+  let source = "**foo [*bar*](/url)**\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><strong>foo <a href=\"/url\"><em>bar</em></a></strong></p>\n"
+  )
+}
+
+test "CommonMark 434: Emphasis and strong emphasis" {
+  let source = "__ is not an empty emphasis\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>__ is not an empty emphasis</p>\n")
+}
+
+test "CommonMark 435: Emphasis and strong emphasis" {
+  let source = "____ is not an empty strong emphasis\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>____ is not an empty strong emphasis</p>\n")
+}
+
+test "CommonMark 436: Emphasis and strong emphasis" {
+  let source = "foo ***\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo ***</p>\n")
+}
+
+test "CommonMark 437: Emphasis and strong emphasis" {
+  let source = "foo *\\**\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo <em>*</em></p>\n")
+}
+
+test "CommonMark 438: Emphasis and strong emphasis" {
+  let source = "foo *_*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo <em>_</em></p>\n")
+}
+
+test "CommonMark 439: Emphasis and strong emphasis" {
+  let source = "foo *****\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo *****</p>\n")
+}
+
+test "CommonMark 440: Emphasis and strong emphasis" {
+  let source = "foo **\\***\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo <strong>*</strong></p>\n")
+}
+
+test "CommonMark 441: Emphasis and strong emphasis" {
+  let source = "foo **_**\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo <strong>_</strong></p>\n")
+}
+
+test "CommonMark 442: Emphasis and strong emphasis" {
+  let source = "**foo*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>*<em>foo</em></p>\n")
+}
+
+test "CommonMark 443: Emphasis and strong emphasis" {
+  let source = "*foo**\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>foo</em>*</p>\n")
+}
+
+test "CommonMark 444: Emphasis and strong emphasis" {
+  let source = "***foo**\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>*<strong>foo</strong></p>\n")
+}
+
+test "CommonMark 445: Emphasis and strong emphasis" {
+  let source = "****foo*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>***<em>foo</em></p>\n")
+}
+
+test "CommonMark 446: Emphasis and strong emphasis" {
+  let source = "**foo***\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><strong>foo</strong>*</p>\n")
+}
+
+test "CommonMark 447: Emphasis and strong emphasis" {
+  let source = "*foo****\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>foo</em>***</p>\n")
+}
+
+test "CommonMark 448: Emphasis and strong emphasis" {
+  let source = "foo ___\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo ___</p>\n")
+}
+
+test "CommonMark 449: Emphasis and strong emphasis" {
+  let source = "foo _\\__\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo <em>_</em></p>\n")
+}
+
+test "CommonMark 450: Emphasis and strong emphasis" {
+  let source = "foo _*_\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo <em>*</em></p>\n")
+}
+
+test "CommonMark 451: Emphasis and strong emphasis" {
+  let source = "foo _____\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo _____</p>\n")
+}
+
+test "CommonMark 452: Emphasis and strong emphasis" {
+  let source = "foo __\\___\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo <strong>_</strong></p>\n")
+}
+
+test "CommonMark 453: Emphasis and strong emphasis" {
+  let source = "foo __*__\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo <strong>*</strong></p>\n")
+}
+
+test "CommonMark 454: Emphasis and strong emphasis" {
+  let source = "__foo_\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>_<em>foo</em></p>\n")
+}
+
+test "CommonMark 455: Emphasis and strong emphasis" {
+  let source = "_foo__\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>foo</em>_</p>\n")
+}
+
+test "CommonMark 456: Emphasis and strong emphasis" {
+  let source = "___foo__\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>_<strong>foo</strong></p>\n")
+}
+
+test "CommonMark 457: Emphasis and strong emphasis" {
+  let source = "____foo_\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>___<em>foo</em></p>\n")
+}
+
+test "CommonMark 458: Emphasis and strong emphasis" {
+  let source = "__foo___\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><strong>foo</strong>_</p>\n")
+}
+
+test "CommonMark 459: Emphasis and strong emphasis" {
+  let source = "_foo____\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>foo</em>___</p>\n")
+}
+
+test "CommonMark 460: Emphasis and strong emphasis" {
+  let source = "**foo**\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><strong>foo</strong></p>\n")
+}
+
+test "CommonMark 461: Emphasis and strong emphasis" {
+  let source = "*_foo_*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em><em>foo</em></em></p>\n")
+}
+
+test "CommonMark 462: Emphasis and strong emphasis" {
+  let source = "__foo__\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><strong>foo</strong></p>\n")
+}
+
+test "CommonMark 463: Emphasis and strong emphasis" {
+  let source = "_*foo*_\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em><em>foo</em></em></p>\n")
+}
+
+test "CommonMark 464: Emphasis and strong emphasis" {
+  let source = "****foo****\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><strong><strong>foo</strong></strong></p>\n")
+}
+
+test "CommonMark 465: Emphasis and strong emphasis" {
+  let source = "____foo____\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><strong><strong>foo</strong></strong></p>\n")
+}
+
+test "CommonMark 466: Emphasis and strong emphasis" {
+  let source = "******foo******\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><strong><strong><strong>foo</strong></strong></strong></p>\n"
+  )
+}
+
+test "CommonMark 467: Emphasis and strong emphasis" {
+  let source = "***foo***\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em><strong>foo</strong></em></p>\n")
+}
+
+test "CommonMark 468: Emphasis and strong emphasis" {
+  let source = "_____foo_____\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><em><strong><strong>foo</strong></strong></em></p>\n"
+  )
+}
+
+test "CommonMark 469: Emphasis and strong emphasis" {
+  let source = "*foo _bar* baz_\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>foo _bar</em> baz_</p>\n")
+}
+
+test "CommonMark 470: Emphasis and strong emphasis" {
+  let source = "*foo __bar *baz bim__ bam*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><em>foo <strong>bar *baz bim</strong> bam</em></p>\n"
+  )
+}
+
+test "CommonMark 471: Emphasis and strong emphasis" {
+  let source = "**foo **bar baz**\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>**foo <strong>bar baz</strong></p>\n")
+}
+
+test "CommonMark 472: Emphasis and strong emphasis" {
+  let source = "*foo *bar baz*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>*foo <em>bar baz</em></p>\n")
+}
+
+test "CommonMark 473: Emphasis and strong emphasis" {
+  let source = "*[bar*](/url)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>*<a href=\"/url\">bar*</a></p>\n")
+}
+
+test "CommonMark 474: Emphasis and strong emphasis" {
+  let source = "_foo [bar_](/url)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>_foo <a href=\"/url\">bar_</a></p>\n")
+}
+
+test "CommonMark 475: Emphasis and strong emphasis" {
+  let source = "*<img src=\"foo\" title=\"*\"/>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>*<img src=\"foo\" title=\"*\"/></p>\n")
+}
+
+test "CommonMark 476: Emphasis and strong emphasis" {
+  let source = "**<a href=\"**\">\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>**<a href=\"**\"></p>\n")
+}
+
+test "CommonMark 477: Emphasis and strong emphasis" {
+  let source = "__<a href=\"__\">\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>__<a href=\"__\"></p>\n")
+}
+
+test "CommonMark 478: Emphasis and strong emphasis" {
+  let source = "*a `*`*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>a <code>*</code></em></p>\n")
+}
+
+test "CommonMark 479: Emphasis and strong emphasis" {
+  let source = "_a `_`_\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>a <code>_</code></em></p>\n")
+}
+
+test "CommonMark 480: Emphasis and strong emphasis" {
+  let source = "**a<https://foo.bar/?q=**>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p>**a<a href=\"https://foo.bar/?q=**\">https://foo.bar/?q=**</a></p>\n"
+  )
+}
+
+test "CommonMark 481: Emphasis and strong emphasis" {
+  let source = "__a<https://foo.bar/?q=__>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p>__a<a href=\"https://foo.bar/?q=__\">https://foo.bar/?q=__</a></p>\n"
+  )
+}

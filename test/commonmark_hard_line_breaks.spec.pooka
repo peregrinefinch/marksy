@@ -1,0 +1,129 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+// Cases from CommonMark 0.31.2. The upstream expected HTML is unchanged.
+// Skipped cases are known gaps, not accepted variations of the standard.
+module commonmark_hard_line_breaks_test
+
+import marksy
+import marksy/html
+import poke/should
+
+test "CommonMark 633: Hard line breaks" {
+  let source = "foo  \nbaz\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo<br />\nbaz</p>\n")
+}
+
+test "CommonMark 634: Hard line breaks" {
+  let source = "foo\\\nbaz\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo<br />\nbaz</p>\n")
+}
+
+test "CommonMark 635: Hard line breaks" {
+  let source = "foo       \nbaz\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo<br />\nbaz</p>\n")
+}
+
+test "CommonMark 636: Hard line breaks" {
+  let source = "foo  \n     bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo<br />\nbar</p>\n")
+}
+
+test "CommonMark 637: Hard line breaks" {
+  let source = "foo\\\n     bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo<br />\nbar</p>\n")
+}
+
+test "CommonMark 638: Hard line breaks" {
+  let source = "*foo  \nbar*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>foo<br />\nbar</em></p>\n")
+}
+
+test "CommonMark 639: Hard line breaks" {
+  let source = "*foo\\\nbar*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>foo<br />\nbar</em></p>\n")
+}
+
+test "CommonMark 640: Hard line breaks" {
+  let source = "`code  \nspan`\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><code>code   span</code></p>\n")
+}
+
+test "CommonMark 641: Hard line breaks" {
+  let source = "`code\\\nspan`\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><code>code\\ span</code></p>\n")
+}
+
+test "CommonMark 642: Hard line breaks" {
+  let source = "<a href=\"foo  \nbar\">\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"foo  \nbar\"></p>\n")
+}
+
+test "CommonMark 643: Hard line breaks" {
+  let source = "<a href=\"foo\\\nbar\">\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"foo\\\nbar\"></p>\n")
+}
+
+test "CommonMark 644: Hard line breaks" {
+  let source = "foo\\\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo\\</p>\n")
+}
+
+test "CommonMark 645: Hard line breaks" {
+  let source = "foo  \n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo</p>\n")
+}
+
+test "CommonMark 646: Hard line breaks" {
+  let source = "### foo\\\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<h3>foo\\</h3>\n")
+}
+
+test "CommonMark 647: Hard line breaks" {
+  let source = "### foo  \n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<h3>foo</h3>\n")
+}

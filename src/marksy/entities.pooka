@@ -1,0 +1,140 @@
+// SPDX-License-Identifier: Apache-2.0
+
+//// An entity changes the text, not the grammar around it. Decode it after the
+//// surrounding Markdown has chosen its delimiters, so `&ast;` never opens
+//// emphasis. Unknown names keep their original spelling.
+module entities
+
+import marksy/text
+import marksy/named_entities
+import pooka/bit_array
+import pooka/list
+import pooka/int
+import pooka/string
+
+/// Return decoded text and the unconsumed suffix after a required semicolon.
+read(chars: List(String)) -> Option(#(String, List(String))) {
+  _read(chars, [], 0)
+}
+
+_read(chars: List(String), reversed: List(String), count: Int) -> Option(
+  #(String, List(String))
+) {
+  match chars {
+    [";", ..rest] if count > 0 -> match _value(
+      list.reverse(reversed) |> string.join("")
+    ) {
+      Some(value) -> Some(#(value, rest))
+      None -> None
+    }
+    [char, ..rest] if count < 32 && char != " " && char != "\n" && char != "&" -> _read(
+      rest,
+      [char, ..reversed],
+      count + 1
+    )
+    _ -> None
+  }
+}
+
+_value(name: String) -> Option(String) {
+  match text.chars(name) {
+    ["#", "x", ..digits] -> _number(digits, 16, 0, 0)
+    ["#", "X", ..digits] -> _number(digits, 16, 0, 0)
+    ["#", ..digits] -> _number(digits, 10, 0, 0)
+    _ -> named_entities.lookup(name)
+  }
+}
+
+_number(chars: List(String), base: Int, value: Int, count: Int) -> Option(
+  String
+) {
+  match chars {
+    [] -> match count > 0 && count <= match base {
+      16 -> 6
+      _ -> 7
+    } {
+      True -> Some(_scalar(_replacement(value)))
+      False -> None
+    }
+    [char, ..rest] -> match _digit(string.lowercase(char)) {
+      Some(digit) if digit < base -> _number(
+        rest,
+        base,
+        value * base + digit,
+        count + 1
+      )
+      _ -> None
+    }
+  }
+}
+
+_digit(char: String) -> Option(Int) {
+  _digit_in(text.chars("0123456789abcdef"), char, 0)
+}
+
+_digit_in(chars: List(String), needle: String, index: Int) -> Option(Int) {
+  match chars {
+    [] -> None
+    [char, ..rest] -> match char == needle {
+      True -> Some(index)
+      False -> _digit_in(rest, needle, index + 1)
+    }
+  }
+}
+
+_replacement(value: Int) -> Int {
+  match value {
+    0 -> 65533
+    128 -> 8364
+    130 -> 8218
+    131 -> 402
+    132 -> 8222
+    133 -> 8230
+    134 -> 8224
+    135 -> 8225
+    136 -> 710
+    137 -> 8240
+    138 -> 352
+    139 -> 8249
+    140 -> 338
+    142 -> 381
+    145 -> 8216
+    146 -> 8217
+    147 -> 8220
+    148 -> 8221
+    149 -> 8226
+    150 -> 8211
+    151 -> 8212
+    152 -> 732
+    153 -> 8482
+    154 -> 353
+    155 -> 8250
+    156 -> 339
+    158 -> 382
+    159 -> 376
+    _ if value > 1114111 || (value >= 55296 && value <= 57343) -> 65533
+    _ -> value
+  }
+}
+
+// The arithmetic writes validated Unicode into its UTF-8 representation without
+// casting an Int into Pooka's distinct UtfCodepoint type.
+_scalar(value: Int) -> String {
+  let bytes = match value {
+    _ if value < 128 -> <<value>>
+    _ if value < 2048 -> <<(192 + _quotient(value, 64)), (128 + value % 64)>>
+    _ if value < 65536 -> <<(224 + _quotient(value, 4096)), (
+      128 + _quotient(value, 64) % 64
+      ), (128 + value % 64)>>
+    _ -> <<(240 + _quotient(value, 262144)), (128 + _quotient(value, 4096) % 64), (
+      128 + _quotient(value, 64) % 64
+      ), (128 + value % 64)>>
+  }
+  let assert Ok(value) = bit_array.to_string(bytes)
+  value
+}
+
+_quotient(value: Int, divisor: Int) -> Int {
+  let assert Ok(whole) = int.divide(value, divisor)
+  whole
+}

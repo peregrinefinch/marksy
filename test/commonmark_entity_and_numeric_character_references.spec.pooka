@@ -1,0 +1,154 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+// Cases from CommonMark 0.31.2. The upstream expected HTML is unchanged.
+// Skipped cases are known gaps, not accepted variations of the standard.
+module commonmark_entity_and_numeric_character_references_test
+
+import marksy
+import marksy/html
+import poke/should
+
+test "CommonMark 25: Entity and numeric character references" {
+  let source = "&nbsp; &amp; &copy; &AElig; &Dcaron;\n&frac34; &HilbertSpace; &DifferentialD;\n&ClockwiseContourIntegral; &ngE;\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>  &amp; © Æ Ď\n¾ ℋ ⅆ\n∲ ≧̸</p>\n")
+}
+
+test "CommonMark 26: Entity and numeric character references" {
+  let source = "&#35; &#1234; &#992; &#0;\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p># Ӓ Ϡ �</p>\n")
+}
+
+test "CommonMark 27: Entity and numeric character references" {
+  let source = "&#X22; &#XD06; &#xcab;\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>&quot; ആ ಫ</p>\n")
+}
+
+test "CommonMark 28: Entity and numeric character references" {
+  let source = "&nbsp &x; &#; &#x;\n&#87654321;\n&#abcdef0;\n&ThisIsNotDefined; &hi?;\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p>&amp;nbsp &amp;x; &amp;#; &amp;#x;\n&amp;#87654321;\n&amp;#abcdef0;\n&amp;ThisIsNotDefined; &amp;hi?;</p>\n"
+  )
+}
+
+test "CommonMark 29: Entity and numeric character references" {
+  let source = "&copy\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>&amp;copy</p>\n")
+}
+
+test "CommonMark 30: Entity and numeric character references" {
+  let source = "&MadeUpEntity;\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>&amp;MadeUpEntity;</p>\n")
+}
+
+test "CommonMark 31: Entity and numeric character references" {
+  let source = "<a href=\"&ouml;&ouml;.html\">\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<a href=\"&ouml;&ouml;.html\">\n")
+}
+
+test "CommonMark 32: Entity and numeric character references" {
+  let source = "[foo](/f&ouml;&ouml; \"f&ouml;&ouml;\")\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><a href=\"/f%C3%B6%C3%B6\" title=\"föö\">foo</a></p>\n"
+  )
+}
+
+test "CommonMark 33: Entity and numeric character references" {
+  let source = "[foo]\n\n[foo]: /f&ouml;&ouml; \"f&ouml;&ouml;\"\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><a href=\"/f%C3%B6%C3%B6\" title=\"föö\">foo</a></p>\n"
+  )
+}
+
+test "CommonMark 34: Entity and numeric character references" {
+  let source = "``` f&ouml;&ouml;\nfoo\n```\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code class=\"language-föö\">foo\n</code></pre>\n")
+}
+
+test "CommonMark 35: Entity and numeric character references" {
+  let source = "`f&ouml;&ouml;`\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><code>f&amp;ouml;&amp;ouml;</code></p>\n")
+}
+
+test "CommonMark 36: Entity and numeric character references" {
+  let source = "    f&ouml;f&ouml;\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>f&amp;ouml;f&amp;ouml;\n</code></pre>\n")
+}
+
+test "CommonMark 37: Entity and numeric character references" {
+  let source = "&#42;foo&#42;\n*foo*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>*foo*\n<em>foo</em></p>\n")
+}
+
+test "CommonMark 38: Entity and numeric character references" {
+  let source = "&#42; foo\n\n* foo\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>* foo</p>\n<ul>\n<li>foo</li>\n</ul>\n")
+}
+
+test "CommonMark 39: Entity and numeric character references" {
+  let source = "foo&#10;&#10;bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo\n\nbar</p>\n")
+}
+
+test "CommonMark 40: Entity and numeric character references" {
+  let source = "&#9;foo\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>\tfoo</p>\n")
+}
+
+test "CommonMark 41: Entity and numeric character references" {
+  let source = "[a](url &quot;tit&quot;)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>[a](url &quot;tit&quot;)</p>\n")
+}

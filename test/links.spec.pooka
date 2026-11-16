@@ -1,0 +1,88 @@
+// SPDX-License-Identifier: Apache-2.0
+
+module links_test
+
+import marksy
+import poke/should
+
+test "links accept balanced parenthesised addresses and titles" {
+  should.equal(
+    marksy.to_html("[owl](/birds/owl_(small) \"A visitor\")"),
+    "<p><a href=\"/birds/owl_(small)\" title=\"A visitor\">owl</a></p>\n"
+  )
+}
+
+test "angle destinations allow spaces and escape their attributes" {
+  should.equal(
+    marksy.to_html("[owl](<a b> 'A &amp; B')"),
+    "<p><a href=\"a%20b\" title=\"A &amp; B\">owl</a></p>\n"
+  )
+}
+
+test "images use inline formatting only for their alternative text" {
+  should.equal(
+    marksy.to_html("![a *small* owl](/owl.png)"),
+    "<p><img src=\"/owl.png\" alt=\"a small owl\" /></p>\n"
+  )
+}
+
+test "invalid links leave their bracket spelling intact" {
+  should.equal(marksy.to_html("[owl](missing"), "<p>[owl](missing</p>\n")
+}
+
+test "entities decode into text without creating Markdown delimiters" {
+  should.equal(
+    marksy.to_html("&ast;owl&ast; &amp; &#35; &#x1F989;"),
+    "<p>*owl* &amp; # 🦉</p>\n"
+  )
+}
+
+test "invalid numeric scalar references use the replacement character" {
+  should.equal(marksy.to_html("&#0; &#xD800; &#x110000;"), "<p>� � �</p>\n")
+}
+
+test "numeric references apply the HTML Windows-1252 replacement table" {
+  should.equal(marksy.to_html("&#128; &#x93;"), "<p>€ “</p>\n")
+}
+
+test "unknown and unterminated entities remain literal text" {
+  should.equal(
+    marksy.to_html("&owl; &amp &#;"),
+    "<p>&amp;owl; &amp;amp &amp;#;</p>\n"
+  )
+}
+
+test "entities in link destinations cannot smuggle unsafe schemes" {
+  should.equal(
+    marksy.to_html("[owl](javascript&colon;alert%281%29)"),
+    "<p><a href=\"\">owl</a></p>\n"
+  )
+}
+
+test "autolinks and email addresses use typed link nodes" {
+  should.equal(
+    marksy.to_html("<https://example.com/owl> <finch@example.com>"),
+    "<p><a href=\"https://example.com/owl\">https://example.com/owl</a> <a href=\"mailto:finch@example.com\">finch@example.com</a></p>\n"
+  )
+}
+
+test "Unicode and spaces in destinations are percent encoded" {
+  should.equal(
+    marksy.to_html("[owl](<birds/🦉 here>)"),
+    "<p><a href=\"birds/%F0%9F%A6%89%20here\">owl</a></p>\n"
+  )
+}
+
+test "raw HTML is recognised but escaped by default" {
+  should.equal(
+    marksy.to_html("a <em title='bird'>small</em> owl"),
+    "<p>a &lt;em title='bird'&gt;small&lt;/em&gt; owl</p>\n"
+  )
+}
+
+test "leading control characters cannot hide an unsafe URL scheme" {
+  should.equal(
+    marksy.to_html("[owl](<\u{1c}javascript:alert%281%29>)"),
+    "<p><a href=\"\">owl</a></p>\n"
+  )
+}

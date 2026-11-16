@@ -1,0 +1,33 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+// Cases from CommonMark 0.31.2. The upstream expected HTML is unchanged.
+// Skipped cases are known gaps, not accepted variations of the standard.
+module commonmark_textual_content_test
+
+import marksy
+import marksy/html
+import poke/should
+
+test "CommonMark 650: Textual content" {
+  let source = "hello $.;'there\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>hello $.;'there</p>\n")
+}
+
+test "CommonMark 651: Textual content" {
+  let source = "Foo χρῆν\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>Foo χρῆν</p>\n")
+}
+
+test "CommonMark 652: Textual content" {
+  let source = "Multiple     spaces\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>Multiple     spaces</p>\n")
+}

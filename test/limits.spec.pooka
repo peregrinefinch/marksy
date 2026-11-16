@@ -1,0 +1,145 @@
+// SPDX-License-Identifier: Apache-2.0
+
+module limits_test
+
+import marksy
+import marksy/html
+import marksy/limits
+import marksy/syntax
+import poke/should
+import poke/process
+import pooka/list
+import pooka/string
+import pooka/time
+
+_spin(count: Int) -> Int {
+  _spin(count + 1)
+}
+
+_grow(values: List(Int), size: Int) -> List(Int) {
+  match size > 100000 {
+    True -> values
+    False -> _grow(list.concat(values, values), size * 2)
+  }
+}
+
+test "normal checked parsing and rendering retain their typed results" {
+  let document = marksy.parse_checked(
+    "# Owl",
+    syntax.commonmark(),
+    limits.defaults()
+  ) |> should.be_ok()
+  should.equal(html.render(document), "<h1>Owl</h1>\n")
+  let rendered = marksy.to_html_checked(
+    "~~owl~~",
+    syntax.gfm(),
+    html.defaults(),
+    limits.defaults()
+  ) |> should.be_ok()
+  should.equal(rendered, "<p><del>owl</del></p>\n")
+}
+
+test "byte budgets reject UTF-8 input before invoking the worker" {
+  let channel = process.channel()
+  let result = limits.run("🦉", limits.Budget(3, 100000, 100000, 1000), fn() {
+    channel.send(True)
+  })
+  let error = result |> should.be_error()
+  should.equal(error.reason, limits.Reason.InputTooLarge)
+  channel.receive(0) |> should.be_error()
+  Nil
+}
+
+test "invalid resource budgets fail without starting work" {
+  let error = limits.run("", limits.Budget(0, 0, 233, 1000), fn() { True }) |> should.be_error()
+  should.equal(error.reason, limits.Reason.InvalidBudget)
+}
+
+test "infinite work is stopped by its reduction budget" {
+  let result = process.within(2000, fn() {
+    limits.run("", limits.Budget(1, 10000, 100000, 1000), fn() { _spin(0) })
+  }) |> should.be_ok()
+  let error = result |> should.be_error()
+  should.equal(error.reason, limits.Reason.WorkExceeded)
+}
+
+test "heap growth is isolated from the caller" {
+  let error = limits.run("", limits.Budget(1, 100000000, 2000, 1000), fn() {
+    _grow([1], 1)
+  }) |> should.be_error()
+  should.equal(error.reason, limits.Reason.HeapExceeded)
+}
+
+test "a cancelled worker cannot send a delayed application message" {
+  let channel = process.channel()
+  let error = limits.run("", limits.Budget(1, 1000000, 100000, 10), fn() {
+    time.sleep(time.milliseconds(100)) |> should.be_ok()
+    channel.send(True)
+  }) |> should.be_error()
+  should.equal(error.reason, limits.Reason.TimedOut)
+  channel.receive(150) |> should.be_error()
+  Nil
+}
+
+test "a crashed worker is reported separately from a budget violation" {
+  let error = limits.run("", limits.defaults(), fn() {
+    panic ("a deliberate test failure")
+  }) |> should.be_error()
+  should.equal(error.reason, limits.Reason.WorkerFailed)
+}
+
+test "repeated cancellation does not corrupt subsequent replies" {
+  list.each(list.range(0, 10), fn(_) {
+    limits.run("", limits.Budget(1, 1000, 100000, 1000), fn() { _spin(0) }) |> should.be_error()
+    should.equal(limits.run("", limits.defaults(), fn() { 42 }), Ok(42))
+  })
+}
+
+test "deep quotes with lazy text have a bounded checked outcome" {
+  let source = string.repeat("> ", 100) + "owl\nbird\n"
+  let result = process.within(2000, fn() {
+    marksy.parse_checked(
+      source,
+      syntax.commonmark(),
+      limits.Budget(10000, 100000, 1000000, 500)
+    )
+  }) |> should.be_ok()
+  let error = result |> should.be_error()
+  should.equal(
+    error.reason == limits.Reason.WorkExceeded || error.reason == limits.Reason.HeapExceeded || error.reason == limits.Reason.TimedOut,
+    True
+  )
+}
+
+test "long unmatched delimiter runs have a bounded checked outcome" {
+  let source = string.repeat("a *b_ c**d ", 10000)
+  let result = process.within(2000, fn() {
+    marksy.parse_checked(
+      source,
+      syntax.commonmark(),
+      limits.Budget(200000, 100000, 1000000, 500)
+    )
+  }) |> should.be_ok()
+  result |> should.be_error()
+  Nil
+}
+
+test "checked metadata reads preserve metadata errors separately" {
+  let error = marksy.read_checked(
+    "---\ntitle =\n---\n# Owl",
+    syntax.commonmark(),
+    limits.defaults()
+  ) |> should.be_error()
+  let assert marksy.MetadataError(metadata) = error
+  should.equal(metadata.line, 2)
+}
+
+test "checked metadata reads reject size before parsing the header" {
+  let error = marksy.read_checked(
+    "---\ntitle = \"Owl\"\n---\n# Owl",
+    syntax.commonmark(),
+    limits.Budget(3, 10000, 10000, 1000)
+  ) |> should.be_error()
+  let assert marksy.ResourceError(resource) = error
+  should.equal(resource.reason, limits.Reason.InputTooLarge)
+}

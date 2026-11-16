@@ -1,0 +1,99 @@
+// SPDX-License-Identifier: Apache-2.0
+
+//// A document may ask for more time than its reader can spare. Checked parsing
+//// uses an isolated, monitored BEAM process with byte, reduction, heap, and
+//// elapsed-time budgets. The ordinary parser stays a direct, pure operation.
+////
+//// ```pooka
+//// let budget = limits.defaults()
+//// assert limits.run("owl", budget, fn() { 42 }) == Ok(42)
+//// ```
+module limits
+
+import pooka/string
+
+/// Heap size is in BEAM words, not bytes. Reductions measure runtime work rather
+/// than source characters; limits are resource guards, not nesting heuristics.
+class Budget(
+  max_bytes: Int,
+  max_reductions: Int,
+  max_heap_words: Int,
+  timeout_ms: Int
+)
+
+enum Reason {
+  InvalidBudget
+  InputTooLarge
+  WorkExceeded
+  HeapExceeded
+  TimedOut
+  WorkerFailed
+}
+
+class LimitError(reason: Reason, message: String)
+
+external _Worker from erlang "marksy_limits_ffi" {
+  run(work: fn() -> a, reductions: Int, heap_words: Int, timeout_ms: Int) -> Result(
+    a,
+    Int
+  )
+}
+
+/// One MiB of source, twenty million reductions, four million heap words, and
+/// five seconds. Applications may choose a different budget for their workload.
+defaults() -> Budget {
+  Budget(1048576, 20000000, 4000000, 5000)
+}
+
+/// Reject oversized source before spawning. A cancelled worker is killed and
+/// joined before this function returns; its private reply cannot leak later.
+run(source: String, budget: Budget, work: fn() -> a) -> Result(a, LimitError) {
+  match budget.max_bytes < 0 || budget.max_reductions <= 0 || budget.max_heap_words < 233 || budget.timeout_ms <= 0 {
+    True -> Error(
+      LimitError(
+        Reason.InvalidBudget,
+        "resource budgets must be positive; heap budget must be at least 233 words"
+      )
+    )
+    False -> match string.byte_size(source) > budget.max_bytes {
+      True -> Error(
+        LimitError(
+          Reason.InputTooLarge,
+          "Markdown exceeds the source byte budget"
+        )
+      )
+      False -> match _Worker.run(
+        work,
+        budget.max_reductions,
+        budget.max_heap_words,
+        budget.timeout_ms
+      ) {
+        Ok(value) -> Ok(value)
+        Error(1) -> Error(
+          LimitError(
+            Reason.WorkExceeded,
+            "Markdown exceeded the BEAM reduction budget"
+          )
+        )
+        Error(2) -> Error(
+          LimitError(
+            Reason.HeapExceeded,
+            "Markdown exceeded the worker heap budget"
+          )
+        )
+        Error(3) -> Error(
+          LimitError(
+            Reason.TimedOut,
+            "Markdown exceeded the elapsed-time budget"
+          )
+        )
+        Error(_) -> Error(
+          LimitError(
+            Reason.WorkerFailed,
+            "the Markdown worker failed unexpectedly"
+          )
+        )
+      }
+    }
+  }
+}

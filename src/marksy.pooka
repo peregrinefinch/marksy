@@ -1,0 +1,135 @@
+// SPDX-License-Identifier: Apache-2.0
+
+//// Read Markdown into a typed tree, then choose how it should look in HTML.
+//// Metadata is an explicit document operation so a plain Markdown thematic
+//// break is never mistaken for an unfinished configuration file.
+////
+//// ```pooka
+//// assert marksy.to_html("# Owl\n") == "<h1>Owl</h1>\n"
+//// ```
+module marksy
+
+import marksy/ast
+import marksy/block
+import marksy/frontmatter
+import marksy/html
+import tome
+import marksy/syntax
+import marksy/limits
+
+class Page(metadata: Option(tome.Toml), document: ast.Document)
+
+/// Parse ordinary Markdown without interpreting front matter.
+///
+/// ```pooka
+/// let document = marksy.parse("# Owl\n")
+/// let assert [ast.Heading(1, _, _)] = document.blocks
+/// ```
+parse(source: String) -> ast.Document {
+  block.parse(source)
+}
+
+/// Render using escaped raw HTML and a restricted URL policy.
+///
+/// ```pooka
+/// assert marksy.to_html("An *owl*.") == "<p>An <em>owl</em>.</p>\n"
+/// ```
+to_html(source: String) -> String {
+  parse(source) |> html.render()
+}
+
+/// Read optional `---` TOML metadata and keep body block addresses relative to
+/// the complete original input, not to an imaginary file without its header.
+read(source: String) -> Result(Page, frontmatter.FrontmatterError) {
+  let page = frontmatter.read(source)?
+  Ok(
+    Page(
+      page.metadata,
+      block.parse_at(page.body, page.body_line, page.body_byte_offset)
+    )
+  )
+}
+
+/// Parse explicitly selected extensions while leaving CommonMark as the default.
+///
+/// ```pooka
+/// let document = marksy.parse_with("~~owl~~", syntax.gfm())
+/// ```
+parse_with(source: String, options: syntax.Options) -> ast.Document {
+  block.parse_with(source, options)
+}
+
+/// Render selected syntax with the ordinary safe HTML defaults.
+///
+/// ```pooka
+/// assert marksy.to_html_with("~~owl~~", syntax.gfm()) == "<p><del>owl</del></p>\n"
+/// ```
+to_html_with(source: String, options: syntax.Options) -> String {
+  parse_with(source, options) |> html.render()
+}
+
+/// Read front matter and apply the selected extensions to its body.
+read_with(source: String, options: syntax.Options) -> Result(
+  Page,
+  frontmatter.FrontmatterError
+) {
+  let page = frontmatter.read(source)?
+  Ok(
+    Page(
+      page.metadata,
+      block.parse_at_with(
+        page.body,
+        page.body_line,
+        page.body_byte_offset,
+        options
+      )
+    )
+  )
+}
+
+/// Parse untrusted input with explicit syntax and resource budgets.
+///
+/// ```pooka
+/// let result = marksy.parse_checked("# Owl", syntax.commonmark(), limits.defaults())
+/// ```
+parse_checked(source: String, options: syntax.Options, budget: limits.Budget) -> Result(
+  ast.Document,
+  limits.LimitError
+) {
+  limits.run(source, budget, fn() { parse_with(source, options) })
+}
+
+/// Budget both parsing and HTML rendering in the same isolated operation.
+to_html_checked(
+  source: String,
+  options: syntax.Options,
+  rendering: html.Options,
+  budget: limits.Budget
+) -> Result(String, limits.LimitError) {
+  limits.run(source, budget, fn() {
+    parse_with(source, options) |> html.render_with(rendering)
+  })
+}
+
+/// Checked document reads distinguish malformed metadata from exhausted budgets.
+class CheckedReadError {}
+
+class MetadataError(error: frontmatter.FrontmatterError) is CheckedReadError
+
+class ResourceError(error: limits.LimitError) is CheckedReadError
+
+/// Budget metadata and Markdown together, retaining their distinct error shapes.
+///
+/// ```pooka
+/// let result = marksy.read_checked("---\ntitle = \"Owl\"\n---\n# Hello", syntax.commonmark(), limits.defaults())
+/// ```
+read_checked(source: String, options: syntax.Options, budget: limits.Budget) -> Result(
+  Page,
+  CheckedReadError
+) {
+  match limits.run(source, budget, fn() { read_with(source, options) }) {
+    Ok(Ok(page)) -> Ok(page)
+    Ok(Error(error)) -> Error(MetadataError(error))
+    Error(error) -> Error(ResourceError(error))
+  }
+}

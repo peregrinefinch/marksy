@@ -1,0 +1,125 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+// Cases from CommonMark 0.31.2. The upstream expected HTML is unchanged.
+// Skipped cases are known gaps, not accepted variations of the standard.
+module commonmark_backslash_escapes_test
+
+import marksy
+import marksy/html
+import poke/should
+
+test "CommonMark 12: Backslash escapes" {
+  let source = "\\!\\\"\\#\\$\\%\\&\\'\\(\\)\\*\\+\\,\\-\\.\\/\\:\\;\\<\\=\\>\\?\\@\\[\\\\\\]\\^\\_\\`\\{\\|\\}\\~\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p>!&quot;#$%&amp;'()*+,-./:;&lt;=&gt;?@[\\]^_`{|}~</p>\n"
+  )
+}
+
+test "CommonMark 13: Backslash escapes" {
+  let source = "\\\t\\A\\a\\ \\3\\φ\\«\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>\\\t\\A\\a\\ \\3\\φ\\«</p>\n")
+}
+
+test "CommonMark 14: Backslash escapes" {
+  let source = "\\*not emphasized*\n\\<br/> not a tag\n\\[not a link](/foo)\n\\`not code`\n1\\. not a list\n\\* not a list\n\\# not a heading\n\\[foo]: /url \"not a reference\"\n\\&ouml; not a character entity\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p>*not emphasized*\n&lt;br/&gt; not a tag\n[not a link](/foo)\n`not code`\n1. not a list\n* not a list\n# not a heading\n[foo]: /url &quot;not a reference&quot;\n&amp;ouml; not a character entity</p>\n"
+  )
+}
+
+test "CommonMark 15: Backslash escapes" {
+  let source = "\\\\*emphasis*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>\\<em>emphasis</em></p>\n")
+}
+
+test "CommonMark 16: Backslash escapes" {
+  let source = "foo\\\nbar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo<br />\nbar</p>\n")
+}
+
+test "CommonMark 17: Backslash escapes" {
+  let source = "`` \\[\\` ``\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><code>\\[\\`</code></p>\n")
+}
+
+test "CommonMark 18: Backslash escapes" {
+  let source = "    \\[\\]\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>\\[\\]\n</code></pre>\n")
+}
+
+test "CommonMark 19: Backslash escapes" {
+  let source = "~~~\n\\[\\]\n~~~\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>\\[\\]\n</code></pre>\n")
+}
+
+test "CommonMark 20: Backslash escapes" {
+  let source = "<https://example.com?find=\\*>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><a href=\"https://example.com?find=%5C*\">https://example.com?find=\\*</a></p>\n"
+  )
+}
+
+test "CommonMark 21: Backslash escapes" {
+  let source = "<a href=\"/bar\\/)\">\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<a href=\"/bar\\/)\">\n")
+}
+
+test "CommonMark 22: Backslash escapes" {
+  let source = "[foo](/bar\\* \"ti\\*tle\")\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/bar*\" title=\"ti*tle\">foo</a></p>\n")
+}
+
+test "CommonMark 23: Backslash escapes" {
+  let source = "[foo]\n\n[foo]: /bar\\* \"ti\\*tle\"\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/bar*\" title=\"ti*tle\">foo</a></p>\n")
+}
+
+test "CommonMark 24: Backslash escapes" {
+  let source = "``` foo\\+bar\nfoo\n```\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<pre><code class=\"language-foo+bar\">foo\n</code></pre>\n"
+  )
+}

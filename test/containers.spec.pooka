@@ -1,0 +1,139 @@
+// SPDX-License-Identifier: Apache-2.0
+
+module containers_test
+
+import marksy
+import marksy/ast
+import poke/should
+import poke/generator
+import poke/property
+import pooka/int
+import pooka/list
+import pooka/string
+
+test "a tight list unwraps only its own paragraphs" {
+  should.equal(
+    marksy.to_html("- owl\n  - book\n- bird\n"),
+    "<ul>\n<li>owl\n<ul>\n<li>book</li>\n</ul>\n</li>\n<li>bird</li>\n</ul>\n"
+  )
+}
+
+test "blank lines between siblings make a loose list" {
+  should.equal(
+    marksy.to_html("- owl\n\n- bird\n"),
+    "<ul>\n<li>\n<p>owl</p>\n</li>\n<li>\n<p>bird</p>\n</li>\n</ul>\n"
+  )
+}
+
+test "a nested loose list does not loosen its parent" {
+  should.equal(
+    marksy.to_html("- owl\n  - book\n\n    paper\n- bird\n"),
+    "<ul>\n<li>owl\n<ul>\n<li>\n<p>book</p>\n<p>paper</p>\n</li>\n</ul>\n</li>\n<li>bird</li>\n</ul>\n"
+  )
+}
+
+test "ordered list starts survive and delimiter changes split lists" {
+  should.equal(
+    marksy.to_html("9. owl\n10. bird\n11) book\n"),
+    "<ol start=\"9\">\n<li>owl</li>\n<li>bird</li>\n</ol>\n<ol start=\"11\">\n<li>book</li>\n</ol>\n"
+  )
+}
+
+test "empty items stay in the same list" {
+  should.equal(
+    marksy.to_html("- owl\n-\n- bird\n"),
+    "<ul>\n<li>owl</li>\n<li></li>\n<li>bird</li>\n</ul>\n"
+  )
+}
+
+test "a blank after an empty item can separate its next sibling" {
+  should.equal(
+    marksy.to_html("* owl\n*\n\n* bird\n"),
+    "<ul>\n<li>\n<p>owl</p>\n</li>\n<li></li>\n<li>\n<p>bird</p>\n</li>\n</ul>\n"
+  )
+}
+
+test "only an ordered list beginning at one interrupts a paragraph" {
+  should.equal(marksy.to_html("Owls\n2. Birds\n"), "<p>Owls\n2. Birds</p>\n")
+  should.equal(
+    marksy.to_html("Owls\n1. Birds\n"),
+    "<p>Owls</p>\n<ol>\n<li>Birds</li>\n</ol>\n"
+  )
+}
+
+test "lazy list continuation cannot manufacture a nested list" {
+  should.equal(
+    marksy.to_html("   - owl\n    - bird\n"),
+    "<ul>\n<li>owl\n- bird</li>\n</ul>\n"
+  )
+}
+
+test "a blank quoted line ends a lazy paragraph" {
+  should.equal(
+    marksy.to_html("> owl\n>\nbird\n"),
+    "<blockquote>\n<p>owl</p>\n</blockquote>\n<p>bird</p>\n"
+  )
+}
+
+test "nested quotes allow lazy continuation in their last paragraph" {
+  should.equal(
+    marksy.to_html("> > owl\nbird\n"),
+    "<blockquote>\n<blockquote>\n<p>owl\nbird</p>\n</blockquote>\n</blockquote>\n"
+  )
+}
+
+test "tabs after a quote marker retain physical tab stops" {
+  should.equal(
+    marksy.to_html(">\t\towl\n"),
+    "<blockquote>\n<pre><code>  owl\n</code></pre>\n</blockquote>\n"
+  )
+}
+
+test "blank lines inside fenced item code do not make a list loose" {
+  should.equal(
+    marksy.to_html("- owl\n- ```\n  bird\n\n  ```\n"),
+    "<ul>\n<li>owl</li>\n<li>\n<pre><code>bird\n\n</code></pre>\n</li>\n</ul>\n"
+  )
+}
+
+test "generated ordered starts retain their numeric value" {
+  property.for_all(generator.integers(0, 999999999), fn(start) {
+    let prefix = match start == 1 {
+      True -> "<ol>\n"
+      False -> "<ol start=\"" + int.to_string(start) + "\">\n"
+    }
+    should.equal(
+      marksy.to_html(int.to_string(start) + ". owl\n"),
+      prefix + "<li>owl</li>\n</ol>\n"
+    )
+  })
+}
+
+test "list nodes retain the entire original container source interval" {
+  let document = marksy.parse("- owl\r\n- bird\r\n")
+  let assert [ast.ListBlock(False, 1, True, items, span)] = document.blocks
+  should.equal(list.length(items), 2)
+  should.equal(span.start, ast.Position(1, 1, 0))
+  should.equal(span.end, ast.Position(3, 1, 15))
+}
+
+test "long indented item paragraphs remain one list item" {
+  let body = string.repeat("  owl\n", 1000)
+  let document = marksy.parse("- owl\n" + body)
+  let assert [ast.ListBlock(False, 1, True, items, _)] = document.blocks
+  should.equal(list.length(items), 1)
+}
+
+test "a page with many sibling items keeps their order" {
+  let source = list.range(0, 1000) |> list.map(fn(n) {
+    "- owl " + int.to_string(n) + "\n"
+  }) |> string.join("")
+  let assert [ast.ListBlock(False, 1, True, items, _)] = marksy.parse(source).blocks
+  should.equal(list.length(items), 1000)
+}
+
+test "long lazy quote continuations stay in one paragraph" {
+  let source = "> owl\n" + string.repeat("bird\n", 1000)
+  let assert [ast.BlockQuote(children, _)] = marksy.parse(source).blocks
+  should.equal(list.length(children), 1)
+}

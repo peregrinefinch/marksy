@@ -1,0 +1,28 @@
+// SPDX-License-Identifier: Apache-2.0
+
+//// A delimiter looks at its neighbours, and those neighbours may come from
+//// any alphabet. Use Erlang's Unicode tables for categories and full case
+//// folding; the Markdown grammar itself stays in Pooka.
+module unicode
+
+external _Unicode from erlang "marksy_unicode_ffi" {
+  punctuation(value: String) -> Bool
+
+  whitespace(value: String) -> Bool
+
+  casefold(value: String) -> String
+}
+
+/// Empty neighbours stand for the whitespace at either edge of a block.
+whitespace(value: String) -> Bool {
+  value == "" || _Unicode.whitespace(value)
+}
+
+punctuation(value: String) -> Bool {
+  value != "" && _Unicode.punctuation(value)
+}
+
+/// Reference labels use full Unicode case folding, not just lowercase.
+casefold(value: String) -> String {
+  _Unicode.casefold(value)
+}

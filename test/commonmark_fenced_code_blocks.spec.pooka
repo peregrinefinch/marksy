@@ -1,0 +1,256 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+// Cases from CommonMark 0.31.2. The upstream expected HTML is unchanged.
+// Skipped cases are known gaps, not accepted variations of the standard.
+module commonmark_fenced_code_blocks_test
+
+import marksy
+import marksy/html
+import poke/should
+
+test "CommonMark 119: Fenced code blocks" {
+  let source = "```\n<\n >\n```\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>&lt;\n &gt;\n</code></pre>\n")
+}
+
+test "CommonMark 120: Fenced code blocks" {
+  let source = "~~~\n<\n >\n~~~\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>&lt;\n &gt;\n</code></pre>\n")
+}
+
+test "CommonMark 121: Fenced code blocks" {
+  let source = "``\nfoo\n``\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><code>foo</code></p>\n")
+}
+
+test "CommonMark 122: Fenced code blocks" {
+  let source = "```\naaa\n~~~\n```\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>aaa\n~~~\n</code></pre>\n")
+}
+
+test "CommonMark 123: Fenced code blocks" {
+  let source = "~~~\naaa\n```\n~~~\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>aaa\n```\n</code></pre>\n")
+}
+
+test "CommonMark 124: Fenced code blocks" {
+  let source = "````\naaa\n```\n``````\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>aaa\n```\n</code></pre>\n")
+}
+
+test "CommonMark 125: Fenced code blocks" {
+  let source = "~~~~\naaa\n~~~\n~~~~\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>aaa\n~~~\n</code></pre>\n")
+}
+
+test "CommonMark 126: Fenced code blocks" {
+  let source = "```\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code></code></pre>\n")
+}
+
+test "CommonMark 127: Fenced code blocks" {
+  let source = "`````\n\n```\naaa\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>\n```\naaa\n</code></pre>\n")
+}
+
+test "CommonMark 128: Fenced code blocks" {
+  let source = "> ```\n> aaa\n\nbbb\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<blockquote>\n<pre><code>aaa\n</code></pre>\n</blockquote>\n<p>bbb</p>\n"
+  )
+}
+
+test "CommonMark 129: Fenced code blocks" {
+  let source = "```\n\n  \n```\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>\n  \n</code></pre>\n")
+}
+
+test "CommonMark 130: Fenced code blocks" {
+  let source = "```\n```\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code></code></pre>\n")
+}
+
+test "CommonMark 131: Fenced code blocks" {
+  let source = " ```\n aaa\naaa\n```\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>aaa\naaa\n</code></pre>\n")
+}
+
+test "CommonMark 132: Fenced code blocks" {
+  let source = "  ```\naaa\n  aaa\naaa\n  ```\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>aaa\naaa\naaa\n</code></pre>\n")
+}
+
+test "CommonMark 133: Fenced code blocks" {
+  let source = "   ```\n   aaa\n    aaa\n  aaa\n   ```\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>aaa\n aaa\naaa\n</code></pre>\n")
+}
+
+test "CommonMark 134: Fenced code blocks" {
+  let source = "    ```\n    aaa\n    ```\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>```\naaa\n```\n</code></pre>\n")
+}
+
+test "CommonMark 135: Fenced code blocks" {
+  let source = "```\naaa\n  ```\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>aaa\n</code></pre>\n")
+}
+
+test "CommonMark 136: Fenced code blocks" {
+  let source = "   ```\naaa\n  ```\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>aaa\n</code></pre>\n")
+}
+
+test "CommonMark 137: Fenced code blocks" {
+  let source = "```\naaa\n    ```\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>aaa\n    ```\n</code></pre>\n")
+}
+
+test "CommonMark 138: Fenced code blocks" {
+  let source = "``` ```\naaa\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><code> </code>\naaa</p>\n")
+}
+
+test "CommonMark 139: Fenced code blocks" {
+  let source = "~~~~~~\naaa\n~~~ ~~\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>aaa\n~~~ ~~\n</code></pre>\n")
+}
+
+test "CommonMark 140: Fenced code blocks" {
+  let source = "foo\n```\nbar\n```\nbaz\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p>foo</p>\n<pre><code>bar\n</code></pre>\n<p>baz</p>\n"
+  )
+}
+
+test "CommonMark 141: Fenced code blocks" {
+  let source = "foo\n---\n~~~\nbar\n~~~\n# baz\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<h2>foo</h2>\n<pre><code>bar\n</code></pre>\n<h1>baz</h1>\n"
+  )
+}
+
+test "CommonMark 142: Fenced code blocks" {
+  let source = "```ruby\ndef foo(x)\n  return 3\nend\n```\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<pre><code class=\"language-ruby\">def foo(x)\n  return 3\nend\n</code></pre>\n"
+  )
+}
+
+test "CommonMark 143: Fenced code blocks" {
+  let source = "~~~~    ruby startline=3 $%@#$\ndef foo(x)\n  return 3\nend\n~~~~~~~\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<pre><code class=\"language-ruby\">def foo(x)\n  return 3\nend\n</code></pre>\n"
+  )
+}
+
+test "CommonMark 144: Fenced code blocks" {
+  let source = "````;\n````\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code class=\"language-;\"></code></pre>\n")
+}
+
+test "CommonMark 145: Fenced code blocks" {
+  let source = "``` aa ```\nfoo\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><code>aa</code>\nfoo</p>\n")
+}
+
+test "CommonMark 146: Fenced code blocks" {
+  let source = "~~~ aa ``` ~~~\nfoo\n~~~\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code class=\"language-aa\">foo\n</code></pre>\n")
+}
+
+test "CommonMark 147: Fenced code blocks" {
+  let source = "```\n``` aaa\n```\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>``` aaa\n</code></pre>\n")
+}

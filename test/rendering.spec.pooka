@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: Apache-2.0
+
+module rendering_test
+
+import marksy
+import marksy/html
+import poke/should
+import poke/snapshot
+
+test "a reading room page keeps its rendered HTML snapshot" {
+  let source = "---\ntitle = \"The reading room\"\n---\n# The reading room\n\nAn *owl* brought [a book](https://example.com/book \"A quiet visit\").\n\n> Read it **slowly**.\n\n```pooka\nlet bird = \"owl\"\n```\n"
+  let page = marksy.read(source) |> should.be_ok()
+  snapshot.snap(html.render(page.document), "reading-room-html")
+}

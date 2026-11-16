@@ -1,0 +1,224 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+// Cases from CommonMark 0.31.2. The upstream expected HTML is unchanged.
+// Skipped cases are known gaps, not accepted variations of the standard.
+module commonmark_images_test
+
+import marksy
+import marksy/html
+import poke/should
+
+test "CommonMark 572: Images" {
+  let source = "![foo](/url \"title\")\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><img src=\"/url\" alt=\"foo\" title=\"title\" /></p>\n"
+  )
+}
+
+test "CommonMark 573: Images" {
+  let source = "![foo *bar*]\n\n[foo *bar*]: train.jpg \"train & tracks\"\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><img src=\"train.jpg\" alt=\"foo bar\" title=\"train &amp; tracks\" /></p>\n"
+  )
+}
+
+test "CommonMark 574: Images" {
+  let source = "![foo ![bar](/url)](/url2)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><img src=\"/url2\" alt=\"foo bar\" /></p>\n")
+}
+
+test "CommonMark 575: Images" {
+  let source = "![foo [bar](/url)](/url2)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><img src=\"/url2\" alt=\"foo bar\" /></p>\n")
+}
+
+test "CommonMark 576: Images" {
+  let source = "![foo *bar*][]\n\n[foo *bar*]: train.jpg \"train & tracks\"\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><img src=\"train.jpg\" alt=\"foo bar\" title=\"train &amp; tracks\" /></p>\n"
+  )
+}
+
+test "CommonMark 577: Images" {
+  let source = "![foo *bar*][foobar]\n\n[FOOBAR]: train.jpg \"train & tracks\"\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><img src=\"train.jpg\" alt=\"foo bar\" title=\"train &amp; tracks\" /></p>\n"
+  )
+}
+
+test "CommonMark 578: Images" {
+  let source = "![foo](train.jpg)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><img src=\"train.jpg\" alt=\"foo\" /></p>\n")
+}
+
+test "CommonMark 579: Images" {
+  let source = "My ![foo bar](/path/to/train.jpg  \"title\"   )\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p>My <img src=\"/path/to/train.jpg\" alt=\"foo bar\" title=\"title\" /></p>\n"
+  )
+}
+
+test "CommonMark 580: Images" {
+  let source = "![foo](<url>)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><img src=\"url\" alt=\"foo\" /></p>\n")
+}
+
+test "CommonMark 581: Images" {
+  let source = "![](/url)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><img src=\"/url\" alt=\"\" /></p>\n")
+}
+
+test "CommonMark 582: Images" {
+  let source = "![foo][bar]\n\n[bar]: /url\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><img src=\"/url\" alt=\"foo\" /></p>\n")
+}
+
+test "CommonMark 583: Images" {
+  let source = "![foo][bar]\n\n[BAR]: /url\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><img src=\"/url\" alt=\"foo\" /></p>\n")
+}
+
+test "CommonMark 584: Images" {
+  let source = "![foo][]\n\n[foo]: /url \"title\"\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><img src=\"/url\" alt=\"foo\" title=\"title\" /></p>\n"
+  )
+}
+
+test "CommonMark 585: Images" {
+  let source = "![*foo* bar][]\n\n[*foo* bar]: /url \"title\"\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><img src=\"/url\" alt=\"foo bar\" title=\"title\" /></p>\n"
+  )
+}
+
+test "CommonMark 586: Images" {
+  let source = "![Foo][]\n\n[foo]: /url \"title\"\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><img src=\"/url\" alt=\"Foo\" title=\"title\" /></p>\n"
+  )
+}
+
+test "CommonMark 587: Images" {
+  let source = "![foo] \n[]\n\n[foo]: /url \"title\"\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><img src=\"/url\" alt=\"foo\" title=\"title\" />\n[]</p>\n"
+  )
+}
+
+test "CommonMark 588: Images" {
+  let source = "![foo]\n\n[foo]: /url \"title\"\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><img src=\"/url\" alt=\"foo\" title=\"title\" /></p>\n"
+  )
+}
+
+test "CommonMark 589: Images" {
+  let source = "![*foo* bar]\n\n[*foo* bar]: /url \"title\"\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><img src=\"/url\" alt=\"foo bar\" title=\"title\" /></p>\n"
+  )
+}
+
+test "CommonMark 590: Images" {
+  let source = "![[foo]]\n\n[[foo]]: /url \"title\"\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p>![[foo]]</p>\n<p>[[foo]]: /url &quot;title&quot;</p>\n"
+  )
+}
+
+test "CommonMark 591: Images" {
+  let source = "![Foo]\n\n[foo]: /url \"title\"\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><img src=\"/url\" alt=\"Foo\" title=\"title\" /></p>\n"
+  )
+}
+
+test "CommonMark 592: Images" {
+  let source = "!\\[foo]\n\n[foo]: /url \"title\"\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>![foo]</p>\n")
+}
+
+test "CommonMark 593: Images" {
+  let source = "\\![foo]\n\n[foo]: /url \"title\"\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>!<a href=\"/url\" title=\"title\">foo</a></p>\n")
+}

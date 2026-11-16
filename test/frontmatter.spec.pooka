@@ -1,0 +1,121 @@
+// SPDX-License-Identifier: Apache-2.0
+
+module frontmatter_test
+
+import marksy/frontmatter
+import poke/should
+import poke/generator
+import poke/property
+import tome
+
+test "a document without front matter keeps its bytes and source address" {
+  let page = frontmatter.read("# Owl\r\n\r\nHello.\n") |> should.be_ok()
+  should.equal(page.metadata, None)
+  should.equal(page.body, "# Owl\r\n\r\nHello.\n")
+  should.equal(page.body_line, 1)
+  should.equal(page.body_byte_offset, 0)
+}
+
+test "an empty document is still a document" {
+  should.equal(frontmatter.read(""), Ok(frontmatter.Page(None, "", 1, 0)))
+}
+
+test "TOML metadata leaves the Markdown body untouched" {
+  let page = frontmatter.read("---\ntitle = \"Owl\"\n---\n# Hello\n") |> should.be_ok()
+  let metadata = page.metadata |> should.be_some()
+  should.equal(tome.path(metadata, ["title"]), Some(tome.TString("Owl")))
+  should.equal(page.body, "# Hello\n")
+  should.equal(page.body_line, 4)
+  should.equal(page.body_byte_offset, 22)
+}
+
+test "empty metadata produces an empty TOML table" {
+  let page = frontmatter.read("---\n---\nBody") |> should.be_ok()
+  should.equal(page.metadata, Some(tome.TTable([])))
+  should.equal(page.body, "Body")
+}
+
+test "the closing delimiter may end at EOF" {
+  let page = frontmatter.read("---\nx = 1\n---") |> should.be_ok()
+  should.equal(page.body, "")
+}
+
+test "CRLF delimiters preserve body line endings" {
+  let page = frontmatter.read("---\r\nx = 1\r\n---\r\nBody\r\n") |> should.be_ok()
+  should.equal(page.body, "Body\r\n")
+  should.equal(page.body_line, 4)
+  should.equal(page.body_byte_offset, 17)
+}
+
+test "UTF-8 metadata counts bytes rather than characters" {
+  let page = frontmatter.read("---\ntitle = \"🦉\"\n---\nBody") |> should.be_ok()
+  should.equal(page.body_byte_offset, 23)
+}
+
+test "a thematic break after text is Markdown" {
+  let source = "A paragraph\n---\nAnother paragraph\n"
+  should.equal(
+    frontmatter.read(source),
+    Ok(frontmatter.Page(None, source, 1, 0))
+  )
+}
+
+test "blank lines before a delimiter do not open metadata" {
+  let source = "\n---\nx = 1\n---\n"
+  should.equal(
+    frontmatter.read(source),
+    Ok(frontmatter.Page(None, source, 1, 0))
+  )
+}
+
+test "indented delimiters do not open metadata" {
+  let source = " ---\nx = 1\n---\n"
+  should.equal(
+    frontmatter.read(source),
+    Ok(frontmatter.Page(None, source, 1, 0))
+  )
+}
+
+test "an opening delimiter must have a closing line" {
+  let error = frontmatter.read("---\nx = 1\n") |> should.be_error()
+  should.equal(error.line, 1)
+  should.equal(error.message, "front matter needs a closing --- line")
+}
+
+test "a lone delimiter is incomplete front matter" {
+  frontmatter.read("---") |> should.be_error()
+  Nil
+}
+
+test "a longer rule does not close metadata" {
+  frontmatter.read("---\nx = 1\n----\n") |> should.be_error()
+  Nil
+}
+
+test "TOML errors point into the original document" {
+  let error = frontmatter.read("---\nname = \"Owl\"\nmissing =\n---\n") |> should.be_error()
+  should.equal(error.line, 3)
+}
+
+test "TOML tables arrays and booleans survive the envelope" {
+  let page = frontmatter.read(
+    "---\ndraft = false\ntags = [\"pooka\", \"beam\"]\n[author]\nname = \"Finch\"\n---\nBody"
+  ) |> should.be_ok()
+  let metadata = page.metadata |> should.be_some()
+  should.equal(
+    tome.path(metadata, ["author", "name"]),
+    Some(tome.TString("Finch"))
+  )
+  should.equal(tome.path(metadata, ["draft"]), Some(tome.TBool(False)))
+}
+
+test "arbitrary Markdown bodies survive a valid envelope byte for byte" {
+  property.for_all(
+    generator.strings(["a", "🦉", "\n", "\r", "-", " ", "#", "`"], 80),
+    fn(body) {
+      let page = frontmatter.read("---\ntitle = \"Owl\"\n---\n" + body) |> should.be_ok()
+      should.equal(page.body, body)
+      should.equal(page.body_byte_offset, 22)
+    }
+  )
+}

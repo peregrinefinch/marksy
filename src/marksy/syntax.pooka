@@ -1,0 +1,31 @@
+// SPDX-License-Identifier: Apache-2.0
+
+//// Extra punctuation should arrive by invitation. Ordinary parsing follows
+//// CommonMark; applications may opt into the three supported GFM extensions
+//// together or choose them independently.
+////
+//// ```pooka
+//// let selected = syntax.Options(True, False, True)
+//// ```
+module syntax
+
+class Options(tables: Bool, task_lists: Bool, strikethrough: Bool)
+
+/// Keep GitHub-specific syntax as ordinary CommonMark text.
+///
+/// ```pooka
+/// assert syntax.commonmark().tables == False
+/// ```
+commonmark() -> Options {
+  Options(False, False, False)
+}
+
+/// Tables, task list items, and one/two-tilde strikethrough. This does not claim
+/// the separate GFM bare-autolink or disallowed-HTML extensions.
+///
+/// ```pooka
+/// assert syntax.gfm().tables == True
+/// ```
+gfm() -> Options {
+  Options(True, True, True)
+}

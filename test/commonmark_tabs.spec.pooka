@@ -1,0 +1,109 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+// Cases from CommonMark 0.31.2. The upstream expected HTML is unchanged.
+// Skipped cases are known gaps, not accepted variations of the standard.
+module commonmark_tabs_test
+
+import marksy
+import marksy/html
+import poke/should
+
+test "CommonMark 1: Tabs" {
+  let source = "\tfoo\tbaz\t\tbim\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>foo\tbaz\t\tbim\n</code></pre>\n")
+}
+
+test "CommonMark 2: Tabs" {
+  let source = "  \tfoo\tbaz\t\tbim\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>foo\tbaz\t\tbim\n</code></pre>\n")
+}
+
+test "CommonMark 3: Tabs" {
+  let source = "    a\ta\n    ὐ\ta\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>a\ta\nὐ\ta\n</code></pre>\n")
+}
+
+test "CommonMark 4: Tabs" {
+  let source = "  - foo\n\n\tbar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<ul>\n<li>\n<p>foo</p>\n<p>bar</p>\n</li>\n</ul>\n")
+}
+
+test "CommonMark 5: Tabs" {
+  let source = "- foo\n\n\t\tbar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<ul>\n<li>\n<p>foo</p>\n<pre><code>  bar\n</code></pre>\n</li>\n</ul>\n"
+  )
+}
+
+test "CommonMark 6: Tabs" {
+  let source = ">\t\tfoo\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<blockquote>\n<pre><code>  foo\n</code></pre>\n</blockquote>\n"
+  )
+}
+
+test "CommonMark 7: Tabs" {
+  let source = "-\t\tfoo\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<ul>\n<li>\n<pre><code>  foo\n</code></pre>\n</li>\n</ul>\n"
+  )
+}
+
+test "CommonMark 8: Tabs" {
+  let source = "    foo\n\tbar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>foo\nbar\n</code></pre>\n")
+}
+
+test "CommonMark 9: Tabs" {
+  let source = " - foo\n   - bar\n\t - baz\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<ul>\n<li>foo\n<ul>\n<li>bar\n<ul>\n<li>baz</li>\n</ul>\n</li>\n</ul>\n</li>\n</ul>\n"
+  )
+}
+
+test "CommonMark 10: Tabs" {
+  let source = "#\tFoo\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<h1>Foo</h1>\n")
+}
+
+test "CommonMark 11: Tabs" {
+  let source = "*\t*\t*\t\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<hr />\n")
+}

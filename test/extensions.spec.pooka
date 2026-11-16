@@ -1,0 +1,65 @@
+// SPDX-License-Identifier: Apache-2.0
+
+module extensions_test
+
+import marksy
+import marksy/html
+import marksy/syntax
+import poke/should
+
+test "extensions are opt-in and independent" {
+  should.equal(marksy.to_html("~~owl~~\n"), "<p>~~owl~~</p>\n")
+  should.equal(
+    marksy.to_html_with("~~owl~~\n", syntax.Options(False, False, True)),
+    "<p><del>owl</del></p>\n"
+  )
+  should.equal(
+    marksy.to_html_with("- [x] owl\n", syntax.Options(False, False, True)),
+    "<ul>\n<li>[x] owl</li>\n</ul>\n"
+  )
+}
+
+test "tables work inside quotes and list items" {
+  let source = "> | bird |\n> | - |\n> | owl |\n"
+  should.equal(
+    marksy.to_html_with(source, syntax.gfm()),
+    "<blockquote>\n<table>\n<thead>\n<tr>\n<th>bird</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>owl</td>\n</tr>\n</tbody>\n</table>\n</blockquote>\n"
+  )
+}
+
+test "table cells resolve document-wide references and nested strikethrough" {
+  let source = "| bird |\n| - |\n| ~~[owl]~~ |\n\n[owl]: /bird\n"
+  should.equal(
+    marksy.to_html_with(source, syntax.gfm()),
+    "<table>\n<thead>\n<tr>\n<th>bird</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td><del><a href=\"/bird\">owl</a></del></td>\n</tr>\n</tbody>\n</table>\n"
+  )
+}
+
+test "loose task list checkboxes belong inside their paragraph" {
+  should.equal(
+    marksy.to_html_with("- [X] owl\n\n- [ ] bird\n", syntax.gfm()),
+    "<ul>\n<li>\n<p><input checked=\"\" disabled=\"\" type=\"checkbox\"> owl</p>\n</li>\n<li>\n<p><input disabled=\"\" type=\"checkbox\"> bird</p>\n</li>\n</ul>\n"
+  )
+}
+
+test "task detection is limited to the first paragraph of an item" {
+  should.equal(
+    marksy.to_html_with("- owl\n\n  [x] bird\n", syntax.gfm()),
+    "<ul>\n<li>\n<p>owl</p>\n<p>[x] bird</p>\n</li>\n</ul>\n"
+  )
+}
+
+test "strikethrough obeys code and link-label boundaries" {
+  should.equal(
+    marksy.to_html_with("`~~owl~~` ~~[bird](/bird)~~", syntax.gfm()),
+    "<p><code>~~owl~~</code> <del><a href=\"/bird\">bird</a></del></p>\n"
+  )
+}
+
+test "front matter and extensions can be selected together" {
+  let page = marksy.read_with(
+    "---\ntitle = \"Owl\"\n---\n~~bird~~\n",
+    syntax.gfm()
+  ) |> should.be_ok()
+  should.equal(html.render(page.document), "<p><del>bird</del></p>\n")
+}

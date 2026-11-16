@@ -1,0 +1,149 @@
+// SPDX-License-Identifier: Apache-2.0
+
+module markdown_test
+
+import marksy
+import marksy/ast
+import marksy/html
+import poke/should
+import poke/generator
+import poke/property
+import pooka/string
+
+test "headings paragraphs and code use distinct block nodes" {
+  should.equal(
+    marksy.to_html("# Owl\n\nA visitor.\n\n```pooka\nlet owl = 1\n```\n"),
+    "<h1>Owl</h1>\n<p>A visitor.</p>\n<pre><code class=\"language-pooka\">let owl = 1\n</code></pre>\n"
+  )
+}
+
+test "setext headings win over thematic breaks inside a paragraph" {
+  should.equal(marksy.to_html("Owl\n---\n\n***\n"), "<h2>Owl</h2>\n<hr />\n")
+}
+
+test "code spans normalise line endings without interpreting emphasis" {
+  should.equal(
+    marksy.to_html("A ` *small*\nowl ` visits.\n"),
+    "<p>A <code>*small* owl</code> visits.</p>\n"
+  )
+}
+
+test "code span closing runs must match their opener" {
+  should.equal(marksy.to_html("`` a ` b ``\n"), "<p><code>a ` b</code></p>\n")
+}
+
+test "two spaces or an escaped newline make hard breaks" {
+  should.equal(
+    marksy.to_html("one  \ntwo\\\nthree\nfour\n"),
+    "<p>one<br />\ntwo<br />\nthree\nfour</p>\n"
+  )
+}
+
+test "basic emphasis and strong emphasis have typed children" {
+  should.equal(
+    marksy.to_html("*small* and **strong**\n"),
+    "<p><em>small</em> and <strong>strong</strong></p>\n"
+  )
+}
+
+test "unmatched delimiters remain text" {
+  should.equal(
+    marksy.to_html("an `owl and *a bird\n"),
+    "<p>an `owl and *a bird</p>\n"
+  )
+}
+
+test "code fences can be indented and longer closing fences are accepted" {
+  should.equal(
+    marksy.to_html("  ~~~text\n  owl\n ~~~~\n"),
+    "<pre><code class=\"language-text\">owl\n</code></pre>\n"
+  )
+}
+
+test "unclosed fences continue to EOF" {
+  should.equal(
+    marksy.to_html("```\n<owl>"),
+    "<pre><code>&lt;owl&gt;\n</code></pre>\n"
+  )
+}
+
+test "indented code keeps internal blank lines and trims final blanks" {
+  should.equal(
+    marksy.to_html("    owl\n\n    bird\n\n"),
+    "<pre><code>owl\n\nbird\n</code></pre>\n"
+  )
+}
+
+test "block quotes parse their children recursively" {
+  should.equal(
+    marksy.to_html("> # Owl\n>\n> A visitor.\n"),
+    "<blockquote>\n<h1>Owl</h1>\n<p>A visitor.</p>\n</blockquote>\n"
+  )
+}
+
+test "CRLF and Unicode retain original block byte offsets" {
+  let document = marksy.parse("🦉\r\n\r\n# Bird\r\n")
+  let assert [ast.Paragraph(_, first), ast.Heading(_, _, second)] = document.blocks
+  should.equal(first.start, ast.Position(1, 1, 0))
+  should.equal(first.end, ast.Position(2, 1, 6))
+  should.equal(second.start, ast.Position(3, 1, 8))
+  should.equal(second.end, ast.Position(4, 1, 16))
+}
+
+test "document metadata leaves headings at their original source addresses" {
+  let page = marksy.read("---\nx = 1\n---\n# Owl\n") |> should.be_ok()
+  let assert [ast.Heading(_, _, span)] = page.document.blocks
+  should.equal(span.start, ast.Position(4, 1, 14))
+}
+
+test "plain Markdown does not treat a rule as front matter" {
+  should.equal(marksy.to_html("---\n"), "<hr />\n")
+}
+
+test "HTML escape policies are independent from link policies" {
+  let span = ast.Span(ast.Position(1, 1, 0), ast.Position(1, 1, 0))
+  let document = ast.Document([ast.Paragraph(
+    [
+      ast.RawInline("<b>owl</b>"),
+      ast.Link([ast.Text("bird")], "javascript:alert(1)", "")
+    ],
+    span
+  )])
+  should.equal(
+    html.render(document),
+    "<p>&lt;b&gt;owl&lt;/b&gt;<a href=\"\">bird</a></p>\n"
+  )
+  should.equal(
+    html.render_with(document, html.Options(html.RawHtml.Preserve, False)),
+    "<p><b>owl</b><a href=\"\">bird</a></p>\n"
+  )
+}
+
+test "images use plain escaped descriptions rather than nested HTML" {
+  let span = ast.Span(ast.Position(1, 1, 0), ast.Position(1, 1, 0))
+  let document = ast.Document(
+    [
+      ast.Paragraph(
+        [ast.Image([ast.Emphasis([ast.Text("owl")])], "/owl.png", "A bird")],
+        span
+      )
+    ]
+  )
+  should.equal(
+    html.render(document),
+    "<p><img src=\"/owl.png\" alt=\"owl\" title=\"A bird\" /></p>\n"
+  )
+}
+
+test "escaping cannot introduce an HTML tag" {
+  property.for_all(
+    generator.strings(["a", "<", ">", "&", "\"", "🦉"], 100),
+    fn(value) {
+      let escaped = html.escape(value)
+      should.equal(
+        string.contains(escaped, "<") || string.contains(escaped, ">"),
+        False
+      )
+    }
+  )
+}

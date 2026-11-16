@@ -1,0 +1,398 @@
+// SPDX-License-Identifier: Apache-2.0
+
+//// Brackets name the label; parentheses carry its address. This reader keeps
+//// them apart so punctuation in a URL does not become inline formatting.
+//// Nested parentheses are counted, and malformed links leave their source
+//// untouched for the ordinary text reader.
+module links
+
+import marksy/entities
+import marksy/text
+import marksy/unicode
+import marksy/angle
+import pooka/list
+import pooka/string
+
+class Target(
+  label: String,
+  destination: String,
+  title: String,
+  rest: List(String)
+)
+
+class Definition(label: String, destination: String, title: String)
+
+class DefinitionRead(value: Definition, lines: Int)
+
+/// Input begins just after `[`. Read a direct link without definitions.
+read(chars: List(String)) -> Option(Target) {
+  read_with(chars, [])
+}
+
+/// Full/collapsed reference links take precedence over shortcut links. A
+/// syntactically valid but unknown full label does not fall back to a shortcut.
+read_with(chars: List(String), definitions: List(Definition)) -> Option(Target) {
+  match _label(chars, 0, []) {
+    None -> None
+    Some(label) -> {
+      let direct = match label.1 {
+        ["(", ..rest] -> match _target(_spaces(rest)) {
+          Some(target) -> Some(Target(label.0, target.0, target.1, target.2))
+          None -> None
+        }
+        _ -> None
+      }
+      match direct {
+        Some(_) -> direct
+        None -> {
+          let reference = match label.1 {
+            ["[", ..rest] -> match _reference_label(rest, [], 0) {
+              Some(found) -> Some(#(
+                match found.0 {
+                  "" -> label.0
+                  _ -> found.0
+                },
+                found.1
+              ))
+              None -> None
+            }
+            _ -> None
+          }
+          let chosen = match reference {
+            Some(found) -> found
+            None -> #(label.0, label.1)
+          }
+          match lookup(definitions, chosen.0) {
+            Some(found) -> Some(
+              Target(label.0, found.destination, found.title, chosen.1)
+            )
+            None -> None
+          }
+        }
+      }
+    }
+  }
+}
+
+/// The original label spelling matters: backslash escapes are not decoded for
+/// matching. Collapse whitespace and fold case, keeping the first definition.
+normalise(value: String) -> String {
+  _normalise(text.chars(value), [], False) |> list.reverse() |> string.join("") |> unicode.casefold()
+}
+
+_normalise(chars: List(String), reversed: List(String), gap: Bool) -> List(
+  String
+) {
+  match chars {
+    [] -> reversed
+    [char, ..rest] -> match unicode.whitespace(char) {
+      True -> _normalise(rest, reversed, reversed != [])
+      False -> {
+        let before = match gap {
+          True -> [" ", ..reversed]
+          False -> reversed
+        }
+        _normalise(rest, [char, ..before], False)
+      }
+    }
+  }
+}
+
+lookup(definitions: List(Definition), label: String) -> Option(Definition) {
+  let key = normalise(label)
+  list.find(definitions, fn(value) { value.label == key })
+}
+
+_label(chars: List(String), depth: Int, reversed: List(String)) -> Option(
+  #(String, List(String))
+) {
+  match chars {
+    [] -> None
+    ["\\", next, ..rest] -> _label(rest, depth, [next, "\\", ..reversed])
+    ["`", .._rest] -> {
+      let count = text.run(chars, "`")
+      match _label_code(list.drop(chars, count), count, []) {
+        Some(found) -> _label(
+          found.1,
+          depth,
+          [string.repeat("`", count) + found.0, ..reversed]
+        )
+        None -> _label(
+          list.drop(chars, count),
+          depth,
+          [string.repeat("`", count), ..reversed]
+        )
+      }
+    }
+    ["<", ..rest] -> match angle.read(rest) {
+      Some(angle.Raw(value, tail)) -> _label(tail, depth, [value, ..reversed])
+      Some(angle.Address(value, _, tail)) -> _label(
+        tail,
+        depth,
+        ["<" + value + ">", ..reversed]
+      )
+      None -> _label(rest, depth, ["<", ..reversed])
+    }
+    ["]", ..rest] if depth == 0 -> Some(
+      #(list.reverse(reversed) |> string.join(""), rest)
+    )
+    ["]", ..rest] -> _label(rest, depth - 1, ["]", ..reversed])
+    ["[", ..rest] -> _label(rest, depth + 1, ["[", ..reversed])
+    [char, ..rest] -> _label(rest, depth, [char, ..reversed])
+  }
+}
+
+_target(chars: List(String)) -> Option(#(String, String, List(String))) {
+  match _destination(chars) {
+    None -> None
+    Some(found) -> match found.1 {
+      [")", ..rest] -> Some(#(found.0, "", rest))
+      [space, .._rest] if _space(space) -> {
+        let remaining = _spaces(found.1)
+        match remaining {
+          [")", ..rest] -> Some(#(found.0, "", rest))
+          _ -> match _title(remaining) {
+            None -> None
+            Some(title) -> match _spaces(title.1) {
+              [")", ..rest] -> Some(#(found.0, title.0, rest))
+              _ -> None
+            }
+          }
+        }
+      }
+      _ -> None
+    }
+  }
+}
+
+_destination(chars: List(String)) -> Option(#(String, List(String))) {
+  match chars {
+    ["<", ..rest] -> _angle(rest, [])
+    _ -> _bare(chars, 0, [])
+  }
+}
+
+_angle(chars: List(String), reversed: List(String)) -> Option(
+  #(String, List(String))
+) {
+  match chars {
+    [">", ..rest] -> Some(#(_decode(list.reverse(reversed)), rest))
+    ["\\", next, ..rest] -> _angle(rest, [next, "\\", ..reversed])
+    [char, ..rest] if char != "<" && char != "\n" -> _angle(
+      rest,
+      [char, ..reversed]
+    )
+    _ -> None
+  }
+}
+
+_bare(chars: List(String), depth: Int, reversed: List(String)) -> Option(
+  #(String, List(String))
+) {
+  match chars {
+    [")", .._rest] if depth == 0 -> Some(
+      #(_decode(list.reverse(reversed)), chars)
+    )
+    [] if depth == 0 -> Some(#(_decode(list.reverse(reversed)), []))
+    [char, .._rest] if _space(char) -> match depth == 0 {
+      True -> Some(#(_decode(list.reverse(reversed)), chars))
+      False -> None
+    }
+    ["\\", next, ..rest] -> _bare(rest, depth, [next, "\\", ..reversed])
+    ["(", ..rest] if depth < 32 -> _bare(rest, depth + 1, ["(", ..reversed])
+    [")", ..rest] if depth > 0 -> _bare(rest, depth - 1, [")", ..reversed])
+    [char, ..rest] if char != "(" && char != "<" && !_control(char) -> _bare(
+      rest,
+      depth,
+      [char, ..reversed]
+    )
+    _ -> None
+  }
+}
+
+_title(chars: List(String)) -> Option(#(String, List(String))) {
+  match chars {
+    ["\"", ..rest] -> _title_text(rest, "\"", [])
+    ["'", ..rest] -> _title_text(rest, "'", [])
+    ["(", ..rest] -> _title_text(rest, ")", [])
+    _ -> None
+  }
+}
+
+_title_text(chars: List(String), closing: String, reversed: List(String)) -> Option(
+  #(String, List(String))
+) {
+  match chars {
+    [char, ..rest] if char == closing -> Some(
+      #(_decode(list.reverse(reversed)), rest)
+    )
+    ["\\", next, ..rest] -> _title_text(rest, closing, [next, "\\", ..reversed])
+    ["(", .._rest] if closing == ")" -> None
+    ["\n", "\n", .._rest] -> None
+    [char, ..rest] -> _title_text(rest, closing, [char, ..reversed])
+    [] -> None
+  }
+}
+
+_spaces(chars: List(String)) -> List(String) {
+  list.drop_while(chars, _space)
+}
+
+_decode(chars: List(String)) -> String {
+  _decode_chars(chars, []) |> list.reverse() |> string.join("")
+}
+
+_decode_chars(chars: List(String), reversed: List(String)) -> List(String) {
+  match chars {
+    ["\\", next, ..rest] -> match string.contains(
+      "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~",
+      next
+    ) {
+      True -> _decode_chars(rest, [next, ..reversed])
+      False -> _decode_chars([next, ..rest], ["\\", ..reversed])
+    }
+    ["&", ..rest] -> match entities.read(rest) {
+      Some(entity) -> _decode_chars(entity.1, [entity.0, ..reversed])
+      None -> _decode_chars(rest, ["&", ..reversed])
+    }
+    [char, ..rest] -> _decode_chars(rest, [char, ..reversed])
+    [] -> reversed
+  }
+}
+
+_space(char: String) -> Bool {
+  char == " " || char == "\t" || char == "\n"
+}
+
+_control(char: String) -> Bool {
+  match string.to_list(char) {
+    [value] -> value < 32 || value == 127
+    _ -> False
+  }
+}
+
+_label_code(chars: List(String), count: Int, reversed: List(String)) -> Option(
+  #(String, List(String))
+) {
+  match chars {
+    [] -> None
+    ["`", .._rest] -> {
+      let width = text.run(chars, "`")
+      let remaining = list.drop(chars, width)
+      match width == count {
+        True -> Some(
+          #(
+            (list.reverse(reversed) |> string.join("")) + string.repeat(
+              "`",
+              width
+            ),
+            remaining
+          )
+        )
+        False -> _label_code(
+          remaining,
+          count,
+          [string.repeat("`", width), ..reversed]
+        )
+      }
+    }
+    [char, ..rest] -> _label_code(rest, count, [char, ..reversed])
+  }
+}
+
+_reference_label(chars: List(String), reversed: List(String), count: Int) -> Option(
+  #(String, List(String))
+) {
+  match chars {
+    ["]", ..rest] -> Some(#(list.reverse(reversed) |> string.join(""), rest))
+    ["\\", next, ..rest] if count < 998 -> _reference_label(
+      rest,
+      [next, "\\", ..reversed],
+      count + 2
+    )
+    [char, ..rest] if char != "[" && count < 999 -> _reference_label(
+      rest,
+      [char, ..reversed],
+      count + 1
+    )
+    _ -> None
+  }
+}
+
+/// Read one reference definition at the beginning of a nonblank block. The
+/// block pass supplies normalised logical lines, including a final newline.
+definition(source: String) -> Option(DefinitionRead) {
+  let chars = text.chars(source)
+  match chars {
+    ["[", ..rest] -> match _reference_label(rest, [], 0) {
+      Some(label) -> match label.1 {
+        [":", ..after] if normalise(label.0) != "" -> {
+          let input = _spaces(after)
+          match _destination(input) {
+            Some(destination) if destination.0 != "" || list.first(input) == Some(
+              "<"
+            ) -> match _definition_end(destination.1) {
+              Some(ending) -> {
+                let consumed = _newlines(chars) - _newlines(ending.1)
+                Some(
+                  DefinitionRead(
+                    Definition(normalise(label.0), destination.0, ending.0),
+                    consumed
+                  )
+                )
+              }
+              None -> None
+            }
+            _ -> None
+          }
+        }
+        _ -> None
+      }
+      None -> None
+    }
+    _ -> None
+  }
+}
+
+_definition_end(chars: List(String)) -> Option(#(String, List(String))) {
+  let line_end = _line_end(chars)
+  let title = match chars {
+    [first, .._rest] if _space(first) -> _title(_spaces(chars))
+    _ -> None
+  }
+  match title {
+    Some(found) -> match _line_end(found.1) {
+      Some(rest) -> Some(#(found.0, rest))
+      None -> match line_end {
+        Some(rest) -> Some(#("", rest))
+        None -> None
+      }
+    }
+    None -> match line_end {
+      Some(rest) -> Some(#("", rest))
+      None -> None
+    }
+  }
+}
+
+_line_end(chars: List(String)) -> Option(List(String)) {
+  match list.drop_while(chars, fn(c) { c == " " || c == "\t" }) {
+    ["\n", ..rest] -> Some(rest)
+    [] -> Some([])
+    _ -> None
+  }
+}
+
+_newlines(chars: List(String)) -> Int {
+  list.fold(chars, 0, fn(count, char) {
+    count + match char {
+      "\n" -> 1
+      _ -> 0
+    }
+  })
+}
+
+/// Decode only escapes/entities, as required by destinations and fence info.
+decode_literal(value: String) -> String {
+  _decode(text.chars(value))
+}

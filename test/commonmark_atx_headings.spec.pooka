@@ -1,0 +1,156 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+// Cases from CommonMark 0.31.2. The upstream expected HTML is unchanged.
+// Skipped cases are known gaps, not accepted variations of the standard.
+module commonmark_atx_headings_test
+
+import marksy
+import marksy/html
+import poke/should
+
+test "CommonMark 62: ATX headings" {
+  let source = "# foo\n## foo\n### foo\n#### foo\n##### foo\n###### foo\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<h1>foo</h1>\n<h2>foo</h2>\n<h3>foo</h3>\n<h4>foo</h4>\n<h5>foo</h5>\n<h6>foo</h6>\n"
+  )
+}
+
+test "CommonMark 63: ATX headings" {
+  let source = "####### foo\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>####### foo</p>\n")
+}
+
+test "CommonMark 64: ATX headings" {
+  let source = "#5 bolt\n\n#hashtag\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>#5 bolt</p>\n<p>#hashtag</p>\n")
+}
+
+test "CommonMark 65: ATX headings" {
+  let source = "\\## foo\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>## foo</p>\n")
+}
+
+test "CommonMark 66: ATX headings" {
+  let source = "# foo *bar* \\*baz\\*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<h1>foo <em>bar</em> *baz*</h1>\n")
+}
+
+test "CommonMark 67: ATX headings" {
+  let source = "#                  foo                     \n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<h1>foo</h1>\n")
+}
+
+test "CommonMark 68: ATX headings" {
+  let source = " ### foo\n  ## foo\n   # foo\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<h3>foo</h3>\n<h2>foo</h2>\n<h1>foo</h1>\n")
+}
+
+test "CommonMark 69: ATX headings" {
+  let source = "    # foo\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code># foo\n</code></pre>\n")
+}
+
+test "CommonMark 70: ATX headings" {
+  let source = "foo\n    # bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo\n# bar</p>\n")
+}
+
+test "CommonMark 71: ATX headings" {
+  let source = "## foo ##\n  ###   bar    ###\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<h2>foo</h2>\n<h3>bar</h3>\n")
+}
+
+test "CommonMark 72: ATX headings" {
+  let source = "# foo ##################################\n##### foo ##\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<h1>foo</h1>\n<h5>foo</h5>\n")
+}
+
+test "CommonMark 73: ATX headings" {
+  let source = "### foo ###     \n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<h3>foo</h3>\n")
+}
+
+test "CommonMark 74: ATX headings" {
+  let source = "### foo ### b\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<h3>foo ### b</h3>\n")
+}
+
+test "CommonMark 75: ATX headings" {
+  let source = "# foo#\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<h1>foo#</h1>\n")
+}
+
+test "CommonMark 76: ATX headings" {
+  let source = "### foo \\###\n## foo #\\##\n# foo \\#\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<h3>foo ###</h3>\n<h2>foo ###</h2>\n<h1>foo #</h1>\n")
+}
+
+test "CommonMark 77: ATX headings" {
+  let source = "****\n## foo\n****\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<hr />\n<h2>foo</h2>\n<hr />\n")
+}
+
+test "CommonMark 78: ATX headings" {
+  let source = "Foo bar\n# baz\nBar foo\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>Foo bar</p>\n<h1>baz</h1>\n<p>Bar foo</p>\n")
+}
+
+test "CommonMark 79: ATX headings" {
+  let source = "## \n#\n### ###\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<h2></h2>\n<h1></h1>\n<h3></h3>\n")
+}

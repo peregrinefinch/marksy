@@ -1,0 +1,100 @@
+// SPDX-License-Identifier: Apache-2.0
+
+module references_test
+
+import marksy
+import marksy/ast
+import poke/should
+import poke/generator
+import poke/property
+import pooka/string
+
+test "forward definitions resolve headings and paragraphs" {
+  should.equal(
+    marksy.to_html("# [Owl]\n\n[Owl]\n\n[owl]: /bird \"A visitor\"\n"),
+    "<h1><a href=\"/bird\" title=\"A visitor\">Owl</a></h1>\n<p><a href=\"/bird\" title=\"A visitor\">Owl</a></p>\n"
+  )
+}
+
+test "definitions inside containers are visible across the document" {
+  should.equal(
+    marksy.to_html("[owl]\n\n> [owl]: /bird\n"),
+    "<p><a href=\"/bird\">owl</a></p>\n<blockquote>\n</blockquote>\n"
+  )
+}
+
+test "the first definition wins across different containers" {
+  should.equal(
+    marksy.to_html("[owl]: /first\n\n> [OWL]: /second\n\n[owl]\n"),
+    "<blockquote>\n</blockquote>\n<p><a href=\"/first\">owl</a></p>\n"
+  )
+}
+
+test "full collapsed and shortcut references share the same definition" {
+  should.equal(
+    marksy.to_html("[bird][owl] [owl][] [owl]\n\n[owl]: /bird\n"),
+    "<p><a href=\"/bird\">bird</a> <a href=\"/bird\">owl</a> <a href=\"/bird\">owl</a></p>\n"
+  )
+}
+
+test "unknown full labels do not fall back to known shortcuts" {
+  should.equal(
+    marksy.to_html("[owl][unknown]\n\n[owl]: /bird\n"),
+    "<p>[owl][unknown]</p>\n"
+  )
+}
+
+test "labels collapse whitespace and use full Unicode case folding" {
+  should.equal(
+    marksy.to_html("[bird][ẞ  ΟΣ]\n\n[ss ος]: /bird\n"),
+    "<p><a href=\"/bird\">bird</a></p>\n"
+  )
+}
+
+test "code and raw HTML cannot introduce reference definitions" {
+  should.equal(
+    marksy.to_html("```\n[owl]: /bird\n```\n\n[owl]\n"),
+    "<pre><code>[owl]: /bird\n</code></pre>\n<p>[owl]</p>\n"
+  )
+}
+
+test "a definition after paragraph text remains ordinary paragraph text" {
+  should.equal(
+    marksy.to_html("Bird\n[owl]: /bird\n\n[owl]\n"),
+    "<p>Bird\n[owl]: /bird</p>\n<p>[owl]</p>\n"
+  )
+}
+
+test "multiline destinations and titles retain their decoded values" {
+  should.equal(
+    marksy.to_html("[owl]:\n</a b>\n'A &amp; B'\n\n[owl]\n"),
+    "<p><a href=\"/a%20b\" title=\"A &amp; B\">owl</a></p>\n"
+  )
+}
+
+test "failed titles on later lines do not eat the following paragraph" {
+  should.equal(
+    marksy.to_html("[owl]: /bird\n\"unfinished title\n\n[owl]\n"),
+    "<p>&quot;unfinished title</p>\n<p><a href=\"/bird\">owl</a></p>\n"
+  )
+}
+
+test "resolved ASTs contain neither source placeholders nor definitions" {
+  let document = marksy.parse("[owl]: /bird\n\n[owl]\n")
+  let assert [ast.Paragraph([ast.Link([ast.Text("owl")], "/bird", "")], _)] = document.blocks
+}
+
+test "reference-derived destinations use the same safe URL policy" {
+  should.equal(
+    marksy.to_html("[owl]\n\n[owl]: javascript&colon;alert%281%29\n"),
+    "<p><a href=\"\">owl</a></p>\n"
+  )
+}
+
+test "short ASCII reference labels are case insensitive" {
+  property.for_all(generator.strings(["a", "b", "c", "d"], 30), fn(suffix) {
+    let label = "owl" + suffix
+    let source = "[bird][" + string.uppercase(label) + "]\n\n[" + label + "]: /bird\n"
+    should.equal(marksy.to_html(source), "<p><a href=\"/bird\">bird</a></p>\n")
+  })
+}

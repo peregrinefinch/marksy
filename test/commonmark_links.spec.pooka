@@ -1,0 +1,789 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+// Cases from CommonMark 0.31.2. The upstream expected HTML is unchanged.
+// Skipped cases are known gaps, not accepted variations of the standard.
+module commonmark_links_test
+
+import marksy
+import marksy/html
+import poke/should
+
+test "CommonMark 482: Links" {
+  let source = "[link](/uri \"title\")\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/uri\" title=\"title\">link</a></p>\n")
+}
+
+test "CommonMark 483: Links" {
+  let source = "[link](/uri)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/uri\">link</a></p>\n")
+}
+
+test "CommonMark 484: Links" {
+  let source = "[](./target.md)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"./target.md\"></a></p>\n")
+}
+
+test "CommonMark 485: Links" {
+  let source = "[link]()\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"\">link</a></p>\n")
+}
+
+test "CommonMark 486: Links" {
+  let source = "[link](<>)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"\">link</a></p>\n")
+}
+
+test "CommonMark 487: Links" {
+  let source = "[]()\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"\"></a></p>\n")
+}
+
+test "CommonMark 488: Links" {
+  let source = "[link](/my uri)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>[link](/my uri)</p>\n")
+}
+
+test "CommonMark 489: Links" {
+  let source = "[link](</my uri>)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/my%20uri\">link</a></p>\n")
+}
+
+test "CommonMark 490: Links" {
+  let source = "[link](foo\nbar)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>[link](foo\nbar)</p>\n")
+}
+
+test "CommonMark 491: Links" {
+  let source = "[link](<foo\nbar>)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>[link](<foo\nbar>)</p>\n")
+}
+
+test "CommonMark 492: Links" {
+  let source = "[a](<b)c>)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"b)c\">a</a></p>\n")
+}
+
+test "CommonMark 493: Links" {
+  let source = "[link](<foo\\>)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>[link](&lt;foo&gt;)</p>\n")
+}
+
+test "CommonMark 494: Links" {
+  let source = "[a](<b)c\n[a](<b)c>\n[a](<b>c)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>[a](&lt;b)c\n[a](&lt;b)c&gt;\n[a](<b>c)</p>\n")
+}
+
+test "CommonMark 495: Links" {
+  let source = "[link](\\(foo\\))\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"(foo)\">link</a></p>\n")
+}
+
+test "CommonMark 496: Links" {
+  let source = "[link](foo(and(bar)))\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"foo(and(bar))\">link</a></p>\n")
+}
+
+test "CommonMark 497: Links" {
+  let source = "[link](foo(and(bar))\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>[link](foo(and(bar))</p>\n")
+}
+
+test "CommonMark 498: Links" {
+  let source = "[link](foo\\(and\\(bar\\))\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"foo(and(bar)\">link</a></p>\n")
+}
+
+test "CommonMark 499: Links" {
+  let source = "[link](<foo(and(bar)>)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"foo(and(bar)\">link</a></p>\n")
+}
+
+test "CommonMark 500: Links" {
+  let source = "[link](foo\\)\\:)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"foo):\">link</a></p>\n")
+}
+
+test "CommonMark 501: Links" {
+  let source = "[link](#fragment)\n\n[link](https://example.com#fragment)\n\n[link](https://example.com?foo=3#frag)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><a href=\"#fragment\">link</a></p>\n<p><a href=\"https://example.com#fragment\">link</a></p>\n<p><a href=\"https://example.com?foo=3#frag\">link</a></p>\n"
+  )
+}
+
+test "CommonMark 502: Links" {
+  let source = "[link](foo\\bar)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"foo%5Cbar\">link</a></p>\n")
+}
+
+test "CommonMark 503: Links" {
+  let source = "[link](foo%20b&auml;)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"foo%20b%C3%A4\">link</a></p>\n")
+}
+
+test "CommonMark 504: Links" {
+  let source = "[link](\"title\")\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"%22title%22\">link</a></p>\n")
+}
+
+test "CommonMark 505: Links" {
+  let source = "[link](/url \"title\")\n[link](/url 'title')\n[link](/url (title))\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><a href=\"/url\" title=\"title\">link</a>\n<a href=\"/url\" title=\"title\">link</a>\n<a href=\"/url\" title=\"title\">link</a></p>\n"
+  )
+}
+
+test "CommonMark 506: Links" {
+  let source = "[link](/url \"title \\\"&quot;\")\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><a href=\"/url\" title=\"title &quot;&quot;\">link</a></p>\n"
+  )
+}
+
+test "CommonMark 507: Links" {
+  let source = "[link](/url \"title\")\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/url%C2%A0%22title%22\">link</a></p>\n")
+}
+
+test "CommonMark 508: Links" {
+  let source = "[link](/url \"title \"and\" title\")\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p>[link](/url &quot;title &quot;and&quot; title&quot;)</p>\n"
+  )
+}
+
+test "CommonMark 509: Links" {
+  let source = "[link](/url 'title \"and\" title')\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><a href=\"/url\" title=\"title &quot;and&quot; title\">link</a></p>\n"
+  )
+}
+
+test "CommonMark 510: Links" {
+  let source = "[link](   /uri\n  \"title\"  )\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/uri\" title=\"title\">link</a></p>\n")
+}
+
+test "CommonMark 511: Links" {
+  let source = "[link] (/uri)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>[link] (/uri)</p>\n")
+}
+
+test "CommonMark 512: Links" {
+  let source = "[link [foo [bar]]](/uri)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/uri\">link [foo [bar]]</a></p>\n")
+}
+
+test "CommonMark 513: Links" {
+  let source = "[link] bar](/uri)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>[link] bar](/uri)</p>\n")
+}
+
+test "CommonMark 514: Links" {
+  let source = "[link [bar](/uri)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>[link <a href=\"/uri\">bar</a></p>\n")
+}
+
+test "CommonMark 515: Links" {
+  let source = "[link \\[bar](/uri)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/uri\">link [bar</a></p>\n")
+}
+
+test "CommonMark 516: Links" {
+  let source = "[link *foo **bar** `#`*](/uri)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><a href=\"/uri\">link <em>foo <strong>bar</strong> <code>#</code></em></a></p>\n"
+  )
+}
+
+test "CommonMark 517: Links" {
+  let source = "[![moon](moon.jpg)](/uri)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><a href=\"/uri\"><img src=\"moon.jpg\" alt=\"moon\" /></a></p>\n"
+  )
+}
+
+test "CommonMark 518: Links" {
+  let source = "[foo [bar](/uri)](/uri)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>[foo <a href=\"/uri\">bar</a>](/uri)</p>\n")
+}
+
+test "CommonMark 519: Links" {
+  let source = "[foo *[bar [baz](/uri)](/uri)*](/uri)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p>[foo <em>[bar <a href=\"/uri\">baz</a>](/uri)</em>](/uri)</p>\n"
+  )
+}
+
+test "CommonMark 520: Links" {
+  let source = "![[[foo](uri1)](uri2)](uri3)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><img src=\"uri3\" alt=\"[foo](uri2)\" /></p>\n")
+}
+
+test "CommonMark 521: Links" {
+  let source = "*[foo*](/uri)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>*<a href=\"/uri\">foo*</a></p>\n")
+}
+
+test "CommonMark 522: Links" {
+  let source = "[foo *bar](baz*)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"baz*\">foo *bar</a></p>\n")
+}
+
+test "CommonMark 523: Links" {
+  let source = "*foo [bar* baz]\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>foo [bar</em> baz]</p>\n")
+}
+
+test "CommonMark 524: Links" {
+  let source = "[foo <bar attr=\"](baz)\">\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>[foo <bar attr=\"](baz)\"></p>\n")
+}
+
+test "CommonMark 525: Links" {
+  let source = "[foo`](/uri)`\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>[foo<code>](/uri)</code></p>\n")
+}
+
+test "CommonMark 526: Links" {
+  let source = "[foo<https://example.com/?search=](uri)>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p>[foo<a href=\"https://example.com/?search=%5D(uri)\">https://example.com/?search=](uri)</a></p>\n"
+  )
+}
+
+test "CommonMark 527: Links" {
+  let source = "[foo][bar]\n\n[bar]: /url \"title\"\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/url\" title=\"title\">foo</a></p>\n")
+}
+
+test "CommonMark 528: Links" {
+  let source = "[link [foo [bar]]][ref]\n\n[ref]: /uri\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/uri\">link [foo [bar]]</a></p>\n")
+}
+
+test "CommonMark 529: Links" {
+  let source = "[link \\[bar][ref]\n\n[ref]: /uri\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/uri\">link [bar</a></p>\n")
+}
+
+test "CommonMark 530: Links" {
+  let source = "[link *foo **bar** `#`*][ref]\n\n[ref]: /uri\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><a href=\"/uri\">link <em>foo <strong>bar</strong> <code>#</code></em></a></p>\n"
+  )
+}
+
+test "CommonMark 531: Links" {
+  let source = "[![moon](moon.jpg)][ref]\n\n[ref]: /uri\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><a href=\"/uri\"><img src=\"moon.jpg\" alt=\"moon\" /></a></p>\n"
+  )
+}
+
+test "CommonMark 532: Links" {
+  let source = "[foo [bar](/uri)][ref]\n\n[ref]: /uri\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p>[foo <a href=\"/uri\">bar</a>]<a href=\"/uri\">ref</a></p>\n"
+  )
+}
+
+test "CommonMark 533: Links" {
+  let source = "[foo *bar [baz][ref]*][ref]\n\n[ref]: /uri\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p>[foo <em>bar <a href=\"/uri\">baz</a></em>]<a href=\"/uri\">ref</a></p>\n"
+  )
+}
+
+test "CommonMark 534: Links" {
+  let source = "*[foo*][ref]\n\n[ref]: /uri\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>*<a href=\"/uri\">foo*</a></p>\n")
+}
+
+test "CommonMark 535: Links" {
+  let source = "[foo *bar][ref]*\n\n[ref]: /uri\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/uri\">foo *bar</a>*</p>\n")
+}
+
+test "CommonMark 536: Links" {
+  let source = "[foo <bar attr=\"][ref]\">\n\n[ref]: /uri\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>[foo <bar attr=\"][ref]\"></p>\n")
+}
+
+test "CommonMark 537: Links" {
+  let source = "[foo`][ref]`\n\n[ref]: /uri\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>[foo<code>][ref]</code></p>\n")
+}
+
+test "CommonMark 538: Links" {
+  let source = "[foo<https://example.com/?search=][ref]>\n\n[ref]: /uri\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p>[foo<a href=\"https://example.com/?search=%5D%5Bref%5D\">https://example.com/?search=][ref]</a></p>\n"
+  )
+}
+
+test "CommonMark 539: Links" {
+  let source = "[foo][BaR]\n\n[bar]: /url \"title\"\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/url\" title=\"title\">foo</a></p>\n")
+}
+
+test "CommonMark 540: Links" {
+  let source = "[ẞ]\n\n[SS]: /url\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/url\">ẞ</a></p>\n")
+}
+
+test "CommonMark 541: Links" {
+  let source = "[Foo\n  bar]: /url\n\n[Baz][Foo bar]\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/url\">Baz</a></p>\n")
+}
+
+test "CommonMark 542: Links" {
+  let source = "[foo] [bar]\n\n[bar]: /url \"title\"\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p>[foo] <a href=\"/url\" title=\"title\">bar</a></p>\n"
+  )
+}
+
+test "CommonMark 543: Links" {
+  let source = "[foo]\n[bar]\n\n[bar]: /url \"title\"\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p>[foo]\n<a href=\"/url\" title=\"title\">bar</a></p>\n"
+  )
+}
+
+test "CommonMark 544: Links" {
+  let source = "[foo]: /url1\n\n[foo]: /url2\n\n[bar][foo]\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/url1\">bar</a></p>\n")
+}
+
+test "CommonMark 545: Links" {
+  let source = "[bar][foo\\!]\n\n[foo!]: /url\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>[bar][foo!]</p>\n")
+}
+
+test "CommonMark 546: Links" {
+  let source = "[foo][ref[]\n\n[ref[]: /uri\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>[foo][ref[]</p>\n<p>[ref[]: /uri</p>\n")
+}
+
+test "CommonMark 547: Links" {
+  let source = "[foo][ref[bar]]\n\n[ref[bar]]: /uri\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>[foo][ref[bar]]</p>\n<p>[ref[bar]]: /uri</p>\n")
+}
+
+test "CommonMark 548: Links" {
+  let source = "[[[foo]]]\n\n[[[foo]]]: /url\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>[[[foo]]]</p>\n<p>[[[foo]]]: /url</p>\n")
+}
+
+test "CommonMark 549: Links" {
+  let source = "[foo][ref\\[]\n\n[ref\\[]: /uri\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/uri\">foo</a></p>\n")
+}
+
+test "CommonMark 550: Links" {
+  let source = "[bar\\\\]: /uri\n\n[bar\\\\]\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/uri\">bar\\</a></p>\n")
+}
+
+test "CommonMark 551: Links" {
+  let source = "[]\n\n[]: /uri\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>[]</p>\n<p>[]: /uri</p>\n")
+}
+
+test "CommonMark 552: Links" {
+  let source = "[\n ]\n\n[\n ]: /uri\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>[\n]</p>\n<p>[\n]: /uri</p>\n")
+}
+
+test "CommonMark 553: Links" {
+  let source = "[foo][]\n\n[foo]: /url \"title\"\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/url\" title=\"title\">foo</a></p>\n")
+}
+
+test "CommonMark 554: Links" {
+  let source = "[*foo* bar][]\n\n[*foo* bar]: /url \"title\"\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><a href=\"/url\" title=\"title\"><em>foo</em> bar</a></p>\n"
+  )
+}
+
+test "CommonMark 555: Links" {
+  let source = "[Foo][]\n\n[foo]: /url \"title\"\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/url\" title=\"title\">Foo</a></p>\n")
+}
+
+test "CommonMark 556: Links" {
+  let source = "[foo] \n[]\n\n[foo]: /url \"title\"\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/url\" title=\"title\">foo</a>\n[]</p>\n")
+}
+
+test "CommonMark 557: Links" {
+  let source = "[foo]\n\n[foo]: /url \"title\"\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/url\" title=\"title\">foo</a></p>\n")
+}
+
+test "CommonMark 558: Links" {
+  let source = "[*foo* bar]\n\n[*foo* bar]: /url \"title\"\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><a href=\"/url\" title=\"title\"><em>foo</em> bar</a></p>\n"
+  )
+}
+
+test "CommonMark 559: Links" {
+  let source = "[[*foo* bar]]\n\n[*foo* bar]: /url \"title\"\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p>[<a href=\"/url\" title=\"title\"><em>foo</em> bar</a>]</p>\n"
+  )
+}
+
+test "CommonMark 560: Links" {
+  let source = "[[bar [foo]\n\n[foo]: /url\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>[[bar <a href=\"/url\">foo</a></p>\n")
+}
+
+test "CommonMark 561: Links" {
+  let source = "[Foo]\n\n[foo]: /url \"title\"\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/url\" title=\"title\">Foo</a></p>\n")
+}
+
+test "CommonMark 562: Links" {
+  let source = "[foo] bar\n\n[foo]: /url\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/url\">foo</a> bar</p>\n")
+}
+
+test "CommonMark 563: Links" {
+  let source = "\\[foo]\n\n[foo]: /url \"title\"\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>[foo]</p>\n")
+}
+
+test "CommonMark 564: Links" {
+  let source = "[foo*]: /url\n\n*[foo*]\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>*<a href=\"/url\">foo*</a></p>\n")
+}
+
+test "CommonMark 565: Links" {
+  let source = "[foo][bar]\n\n[foo]: /url1\n[bar]: /url2\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/url2\">foo</a></p>\n")
+}
+
+test "CommonMark 566: Links" {
+  let source = "[foo][]\n\n[foo]: /url1\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/url1\">foo</a></p>\n")
+}
+
+test "CommonMark 567: Links" {
+  let source = "[foo]()\n\n[foo]: /url1\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"\">foo</a></p>\n")
+}
+
+test "CommonMark 568: Links" {
+  let source = "[foo](not a link)\n\n[foo]: /url1\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/url1\">foo</a>(not a link)</p>\n")
+}
+
+test "CommonMark 569: Links" {
+  let source = "[foo][bar][baz]\n\n[baz]: /url\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>[foo]<a href=\"/url\">bar</a></p>\n")
+}
+
+test "CommonMark 570: Links" {
+  let source = "[foo][bar][baz]\n\n[baz]: /url1\n[bar]: /url2\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><a href=\"/url2\">foo</a><a href=\"/url1\">baz</a></p>\n"
+  )
+}
+
+test "CommonMark 571: Links" {
+  let source = "[foo][bar][baz]\n\n[baz]: /url1\n[foo]: /url2\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>[foo]<a href=\"/url1\">bar</a></p>\n")
+}

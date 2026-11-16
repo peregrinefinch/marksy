@@ -1,0 +1,73 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+// Cases from CommonMark 0.31.2. The upstream expected HTML is unchanged.
+// Skipped cases are known gaps, not accepted variations of the standard.
+module commonmark_paragraphs_test
+
+import marksy
+import marksy/html
+import poke/should
+
+test "CommonMark 219: Paragraphs" {
+  let source = "aaa\n\nbbb\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>aaa</p>\n<p>bbb</p>\n")
+}
+
+test "CommonMark 220: Paragraphs" {
+  let source = "aaa\nbbb\n\nccc\nddd\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>aaa\nbbb</p>\n<p>ccc\nddd</p>\n")
+}
+
+test "CommonMark 221: Paragraphs" {
+  let source = "aaa\n\n\nbbb\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>aaa</p>\n<p>bbb</p>\n")
+}
+
+test "CommonMark 222: Paragraphs" {
+  let source = "  aaa\n bbb\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>aaa\nbbb</p>\n")
+}
+
+test "CommonMark 223: Paragraphs" {
+  let source = "aaa\n             bbb\n                                       ccc\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>aaa\nbbb\nccc</p>\n")
+}
+
+test "CommonMark 224: Paragraphs" {
+  let source = "   aaa\nbbb\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>aaa\nbbb</p>\n")
+}
+
+test "CommonMark 225: Paragraphs" {
+  let source = "    aaa\nbbb\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>aaa\n</code></pre>\n<p>bbb</p>\n")
+}
+
+test "CommonMark 226: Paragraphs" {
+  let source = "aaa     \nbbb     \n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>aaa<br />\nbbb</p>\n")
+}

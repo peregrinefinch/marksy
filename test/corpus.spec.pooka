@@ -1,0 +1,58 @@
+// SPDX-License-Identifier: Apache-2.0
+
+module corpus_test
+
+import pooka/file
+import pooka/json/decode
+import poke/should
+import pooka/list
+import pooka/string
+
+test "CommonMark 0.31.2 contains all 652 official examples" {
+  should.equal(list.length(examples()), 652)
+}
+
+test "the official example numbers remain consecutive" {
+  let numbered = examples() |> list.map(fn(example) { example.number })
+  should.equal(numbered, list.range(1, 653))
+}
+
+test "the upstream corpus retains its Markdown and expected HTML" {
+  let example = examples() |> list.first() |> should.be_some()
+  should.equal(example.number, 1)
+  should.equal(example.section, "Tabs")
+  should.equal(example.markdown, "\tfoo\tbaz\t\tbim\n")
+  should.equal(example.html, "<pre><code>foo\tbaz\t\tbim\n</code></pre>\n")
+}
+
+test "every official case carries a section name" {
+  let sections = examples() |> list.map(fn(example) {
+    string.length(example.section) > 0
+  })
+  should.equal(list.all(sections, fn(nonempty) { nonempty }), True)
+}
+
+class Example(number: Int, section: String, markdown: String, html: String)
+
+examples() -> List(Example) {
+  let text = file.read("test/fixtures/commonmark/spec.json") |> should.be_ok()
+  let content = decode.map2(
+    decode.field("markdown", decode.string()),
+    decode.field("html", decode.string()),
+    fn(markdown, html) { #(markdown, html) }
+  )
+  let example = decode.map3(
+    decode.field("example", decode.int()),
+    decode.field("section", decode.string()),
+    content,
+    fn(number, section, content) {
+      Example(
+        number,
+        section,
+        content.0,
+        content.1
+      )
+    }
+  )
+  decode.read(text, decode.list(example)) |> should.be_ok()
+}

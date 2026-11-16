@@ -1,0 +1,252 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+// Cases from CommonMark 0.31.2. The upstream expected HTML is unchanged.
+// Skipped cases are known gaps, not accepted variations of the standard.
+module commonmark_link_reference_definitions_test
+
+import marksy
+import marksy/html
+import poke/should
+
+test "CommonMark 192: Link reference definitions" {
+  let source = "[foo]: /url \"title\"\n\n[foo]\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/url\" title=\"title\">foo</a></p>\n")
+}
+
+test "CommonMark 193: Link reference definitions" {
+  let source = "   [foo]: \n      /url  \n           'the title'  \n\n[foo]\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/url\" title=\"the title\">foo</a></p>\n")
+}
+
+test "CommonMark 194: Link reference definitions" {
+  let source = "[Foo*bar\\]]:my_(url) 'title (with parens)'\n\n[Foo*bar\\]]\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><a href=\"my_(url)\" title=\"title (with parens)\">Foo*bar]</a></p>\n"
+  )
+}
+
+test "CommonMark 195: Link reference definitions" {
+  let source = "[Foo bar]:\n<my url>\n'title'\n\n[Foo bar]\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><a href=\"my%20url\" title=\"title\">Foo bar</a></p>\n"
+  )
+}
+
+test "CommonMark 196: Link reference definitions" {
+  let source = "[foo]: /url '\ntitle\nline1\nline2\n'\n\n[foo]\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><a href=\"/url\" title=\"\ntitle\nline1\nline2\n\">foo</a></p>\n"
+  )
+}
+
+test "CommonMark 197: Link reference definitions" {
+  let source = "[foo]: /url 'title\n\nwith blank line'\n\n[foo]\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p>[foo]: /url 'title</p>\n<p>with blank line'</p>\n<p>[foo]</p>\n"
+  )
+}
+
+test "CommonMark 198: Link reference definitions" {
+  let source = "[foo]:\n/url\n\n[foo]\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/url\">foo</a></p>\n")
+}
+
+test "CommonMark 199: Link reference definitions" {
+  let source = "[foo]:\n\n[foo]\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>[foo]:</p>\n<p>[foo]</p>\n")
+}
+
+test "CommonMark 200: Link reference definitions" {
+  let source = "[foo]: <>\n\n[foo]\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"\">foo</a></p>\n")
+}
+
+test "CommonMark 201: Link reference definitions" {
+  let source = "[foo]: <bar>(baz)\n\n[foo]\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>[foo]: <bar>(baz)</p>\n<p>[foo]</p>\n")
+}
+
+test "CommonMark 202: Link reference definitions" {
+  let source = "[foo]: /url\\bar\\*baz \"foo\\\"bar\\baz\"\n\n[foo]\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><a href=\"/url%5Cbar*baz\" title=\"foo&quot;bar\\baz\">foo</a></p>\n"
+  )
+}
+
+test "CommonMark 203: Link reference definitions" {
+  let source = "[foo]\n\n[foo]: url\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"url\">foo</a></p>\n")
+}
+
+test "CommonMark 204: Link reference definitions" {
+  let source = "[foo]\n\n[foo]: first\n[foo]: second\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"first\">foo</a></p>\n")
+}
+
+test "CommonMark 205: Link reference definitions" {
+  let source = "[FOO]: /url\n\n[Foo]\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/url\">Foo</a></p>\n")
+}
+
+test "CommonMark 206: Link reference definitions" {
+  let source = "[ΑΓΩ]: /φου\n\n[αγω]\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"/%CF%86%CE%BF%CF%85\">αγω</a></p>\n")
+}
+
+test "CommonMark 207: Link reference definitions" {
+  let source = "[foo]: /url\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "")
+}
+
+test "CommonMark 208: Link reference definitions" {
+  let source = "[\nfoo\n]: /url\nbar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>bar</p>\n")
+}
+
+test "CommonMark 209: Link reference definitions" {
+  let source = "[foo]: /url \"title\" ok\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>[foo]: /url &quot;title&quot; ok</p>\n")
+}
+
+test "CommonMark 210: Link reference definitions" {
+  let source = "[foo]: /url\n\"title\" ok\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>&quot;title&quot; ok</p>\n")
+}
+
+test "CommonMark 211: Link reference definitions" {
+  let source = "    [foo]: /url \"title\"\n\n[foo]\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<pre><code>[foo]: /url &quot;title&quot;\n</code></pre>\n<p>[foo]</p>\n"
+  )
+}
+
+test "CommonMark 212: Link reference definitions" {
+  let source = "```\n[foo]: /url\n```\n\n[foo]\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>[foo]: /url\n</code></pre>\n<p>[foo]</p>\n")
+}
+
+test "CommonMark 213: Link reference definitions" {
+  let source = "Foo\n[bar]: /baz\n\n[bar]\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>Foo\n[bar]: /baz</p>\n<p>[bar]</p>\n")
+}
+
+test "CommonMark 214: Link reference definitions" {
+  let source = "# [Foo]\n[foo]: /url\n> bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<h1><a href=\"/url\">Foo</a></h1>\n<blockquote>\n<p>bar</p>\n</blockquote>\n"
+  )
+}
+
+test "CommonMark 215: Link reference definitions" {
+  let source = "[foo]: /url\nbar\n===\n[foo]\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<h1>bar</h1>\n<p><a href=\"/url\">foo</a></p>\n")
+}
+
+test "CommonMark 216: Link reference definitions" {
+  let source = "[foo]: /url\n===\n[foo]\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>===\n<a href=\"/url\">foo</a></p>\n")
+}
+
+test "CommonMark 217: Link reference definitions" {
+  let source = "[foo]: /foo-url \"foo\"\n[bar]: /bar-url\n  \"bar\"\n[baz]: /baz-url\n\n[foo],\n[bar],\n[baz]\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><a href=\"/foo-url\" title=\"foo\">foo</a>,\n<a href=\"/bar-url\" title=\"bar\">bar</a>,\n<a href=\"/baz-url\">baz</a></p>\n"
+  )
+}
+
+test "CommonMark 218: Link reference definitions" {
+  let source = "[foo]\n\n> [foo]: /url\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><a href=\"/url\">foo</a></p>\n<blockquote>\n</blockquote>\n"
+  )
+}

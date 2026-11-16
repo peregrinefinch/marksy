@@ -1,0 +1,117 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+// Cases from CommonMark 0.31.2. The upstream expected HTML is unchanged.
+// Skipped cases are known gaps, not accepted variations of the standard.
+module commonmark_indented_code_blocks_test
+
+import marksy
+import marksy/html
+import poke/should
+
+test "CommonMark 107: Indented code blocks" {
+  let source = "    a simple\n      indented code block\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<pre><code>a simple\n  indented code block\n</code></pre>\n"
+  )
+}
+
+test "CommonMark 108: Indented code blocks" {
+  let source = "  - foo\n\n    bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<ul>\n<li>\n<p>foo</p>\n<p>bar</p>\n</li>\n</ul>\n")
+}
+
+test "CommonMark 109: Indented code blocks" {
+  let source = "1.  foo\n\n    - bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<ol>\n<li>\n<p>foo</p>\n<ul>\n<li>bar</li>\n</ul>\n</li>\n</ol>\n"
+  )
+}
+
+test "CommonMark 110: Indented code blocks" {
+  let source = "    <a/>\n    *hi*\n\n    - one\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>&lt;a/&gt;\n*hi*\n\n- one\n</code></pre>\n")
+}
+
+test "CommonMark 111: Indented code blocks" {
+  let source = "    chunk1\n\n    chunk2\n  \n \n \n    chunk3\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<pre><code>chunk1\n\nchunk2\n\n\n\nchunk3\n</code></pre>\n"
+  )
+}
+
+test "CommonMark 112: Indented code blocks" {
+  let source = "    chunk1\n      \n      chunk2\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>chunk1\n  \n  chunk2\n</code></pre>\n")
+}
+
+test "CommonMark 113: Indented code blocks" {
+  let source = "Foo\n    bar\n\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>Foo\nbar</p>\n")
+}
+
+test "CommonMark 114: Indented code blocks" {
+  let source = "    foo\nbar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>foo\n</code></pre>\n<p>bar</p>\n")
+}
+
+test "CommonMark 115: Indented code blocks" {
+  let source = "# Heading\n    foo\nHeading\n------\n    foo\n----\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<h1>Heading</h1>\n<pre><code>foo\n</code></pre>\n<h2>Heading</h2>\n<pre><code>foo\n</code></pre>\n<hr />\n"
+  )
+}
+
+test "CommonMark 116: Indented code blocks" {
+  let source = "        foo\n    bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>    foo\nbar\n</code></pre>\n")
+}
+
+test "CommonMark 117: Indented code blocks" {
+  let source = "\n    \n    foo\n    \n\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>foo\n</code></pre>\n")
+}
+
+test "CommonMark 118: Indented code blocks" {
+  let source = "    foo  \n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>foo  \n</code></pre>\n")
+}

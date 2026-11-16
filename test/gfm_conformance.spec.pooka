@@ -1,0 +1,140 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+// Official GFM extension examples; see fixtures/gfm/source.md.
+module gfm_conformance_test
+
+import marksy
+import marksy/html
+import marksy/syntax
+import poke/should
+
+test "GFM 198: Tables (extension)" {
+  let source = "| foo | bar |\n| --- | --- |\n| baz | bim |\n"
+  let output = marksy.parse_with(source, syntax.gfm()) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    output,
+    "<table>\n<thead>\n<tr>\n<th>foo</th>\n<th>bar</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>baz</td>\n<td>bim</td>\n</tr>\n</tbody>\n</table>\n"
+  )
+}
+
+test "GFM 199: Tables (extension)" {
+  let source = "| abc | defghi |\n:-: | -----------:\nbar | baz\n"
+  let output = marksy.parse_with(source, syntax.gfm()) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    output,
+    "<table>\n<thead>\n<tr>\n<th align=\"center\">abc</th>\n<th align=\"right\">defghi</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td align=\"center\">bar</td>\n<td align=\"right\">baz</td>\n</tr>\n</tbody>\n</table>\n"
+  )
+}
+
+test "GFM 200: Tables (extension)" {
+  let source = "| f\\|oo  |\n| ------ |\n| b `\\|` az |\n| b **\\|** im |\n"
+  let output = marksy.parse_with(source, syntax.gfm()) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    output,
+    "<table>\n<thead>\n<tr>\n<th>f|oo</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>b <code>|</code> az</td>\n</tr>\n<tr>\n<td>b <strong>|</strong> im</td>\n</tr>\n</tbody>\n</table>\n"
+  )
+}
+
+test "GFM 201: Tables (extension)" {
+  let source = "| abc | def |\n| --- | --- |\n| bar | baz |\n> bar\n"
+  let output = marksy.parse_with(source, syntax.gfm()) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    output,
+    "<table>\n<thead>\n<tr>\n<th>abc</th>\n<th>def</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>bar</td>\n<td>baz</td>\n</tr>\n</tbody>\n</table>\n<blockquote>\n<p>bar</p>\n</blockquote>\n"
+  )
+}
+
+test "GFM 202: Tables (extension)" {
+  let source = "| abc | def |\n| --- | --- |\n| bar | baz |\nbar\n\nbar\n"
+  let output = marksy.parse_with(source, syntax.gfm()) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    output,
+    "<table>\n<thead>\n<tr>\n<th>abc</th>\n<th>def</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>bar</td>\n<td>baz</td>\n</tr>\n<tr>\n<td>bar</td>\n<td></td>\n</tr>\n</tbody>\n</table>\n<p>bar</p>\n"
+  )
+}
+
+test "GFM 203: Tables (extension)" {
+  let source = "| abc | def |\n| --- |\n| bar |\n"
+  let output = marksy.parse_with(source, syntax.gfm()) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(output, "<p>| abc | def |\n| --- |\n| bar |</p>\n")
+}
+
+test "GFM 204: Tables (extension)" {
+  let source = "| abc | def |\n| --- | --- |\n| bar |\n| bar | baz | boo |\n"
+  let output = marksy.parse_with(source, syntax.gfm()) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    output,
+    "<table>\n<thead>\n<tr>\n<th>abc</th>\n<th>def</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>bar</td>\n<td></td>\n</tr>\n<tr>\n<td>bar</td>\n<td>baz</td>\n</tr>\n</tbody>\n</table>\n"
+  )
+}
+
+test "GFM 205: Tables (extension)" {
+  let source = "| abc | def |\n| --- | --- |\n"
+  let output = marksy.parse_with(source, syntax.gfm()) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    output,
+    "<table>\n<thead>\n<tr>\n<th>abc</th>\n<th>def</th>\n</tr>\n</thead>\n</table>\n"
+  )
+}
+
+test "GFM 279: Task list items (extension)" {
+  let source = "- [ ] foo\n- [x] bar\n"
+  let output = marksy.parse_with(source, syntax.gfm()) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    output,
+    "<ul>\n<li><input disabled=\"\" type=\"checkbox\"> foo</li>\n<li><input checked=\"\" disabled=\"\" type=\"checkbox\"> bar</li>\n</ul>\n"
+  )
+}
+
+test "GFM 280: Task list items (extension)" {
+  let source = "- [x] foo\n  - [ ] bar\n  - [x] baz\n- [ ] bim\n"
+  let output = marksy.parse_with(source, syntax.gfm()) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    output,
+    "<ul>\n<li><input checked=\"\" disabled=\"\" type=\"checkbox\"> foo\n<ul>\n<li><input disabled=\"\" type=\"checkbox\"> bar</li>\n<li><input checked=\"\" disabled=\"\" type=\"checkbox\"> baz</li>\n</ul>\n</li>\n<li><input disabled=\"\" type=\"checkbox\"> bim</li>\n</ul>\n"
+  )
+}
+
+test "GFM 491: Strikethrough (extension)" {
+  let source = "~~Hi~~ Hello, ~there~ world!\n"
+  let output = marksy.parse_with(source, syntax.gfm()) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(output, "<p><del>Hi</del> Hello, <del>there</del> world!</p>\n")
+}
+
+test "GFM 492: Strikethrough (extension)" {
+  let source = "This ~~has a\n\nnew paragraph~~.\n"
+  let output = marksy.parse_with(source, syntax.gfm()) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(output, "<p>This ~~has a</p>\n<p>new paragraph~~.</p>\n")
+}
+
+test "GFM 493: Strikethrough (extension)" {
+  let source = "This will ~~~not~~~ strike.\n"
+  let output = marksy.parse_with(source, syntax.gfm()) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(output, "<p>This will ~~~not~~~ strike.</p>\n")
+}

@@ -1,0 +1,111 @@
+// SPDX-License-Identifier: Apache-2.0
+
+//// A table is a paragraph that has kept its columns in order. Split pipes
+//// before parsing inline markup: an escaped pipe belongs to its cell even
+//// inside code, while an unescaped pipe always marks the next column.
+module tables
+
+import marksy/ast
+import marksy/inline
+import marksy/links
+import marksy/syntax
+import marksy/text
+import pooka/list
+import pooka/string
+
+/// Try the header and delimiter row together. Unequal column counts leave the
+/// original paragraph alone; body rows are padded or truncated to that width.
+parse(
+  source: String,
+  definitions: List(links.Definition),
+  options: syntax.Options,
+  span: ast.Span
+) -> Option(ast.Block) {
+  match string.split(source, "\n") {
+    [header, delimiter, ..body] -> {
+      let headings = cells(header)
+      let separators = cells(delimiter)
+      let alignments = list.map(separators, _alignment)
+      match string.contains(header, "|") && list.length(headings) == list.length(
+        separators
+      ) && list.all(alignments, fn(value) { value != None }) {
+        False -> None
+        True -> {
+          let width = list.length(headings)
+          let columns = list.map(alignments, fn(value) {
+            let assert Some(alignment) = value
+            alignment
+          })
+          let parse_cell = fn(value) {
+            inline.parse_configured(
+              value,
+              definitions,
+              options
+            )
+          }
+          let rows = list.map(body, fn(row) {
+            let values = cells(row)
+            let padding = list.repeat("", width)
+            list.concat(values, padding) |> list.take(width) |> list.map(
+              parse_cell
+            )
+          })
+          Some(ast.Table(columns, list.map(headings, parse_cell), rows, span))
+        }
+      }
+    }
+    _ -> None
+  }
+}
+
+/// Strip optional outside pipes after trimming, preserving escaped pipes as
+/// literal cell text. Runs of backslashes retain their pairwise meaning.
+cells(source: String) -> List(String) {
+  let source = text.trim(source)
+  let chars = text.chars(source)
+  let start = match chars {
+    ["|", ..rest] -> rest
+    _ -> chars
+  }
+  let values = _cells(start, [], []) |> list.reverse()
+  let values = match list.reverse(start) {
+    ["|", .._rest] -> match list.reverse(values) {
+      ["", ..rest] -> list.reverse(rest)
+      _ -> values
+    }
+    _ -> values
+  }
+  list.map(values, text.trim)
+}
+
+_cells(chars: List(String), pending: List(String), reversed: List(String)) -> List(
+  String
+) {
+  match chars {
+    [] -> [list.reverse(pending) |> string.join(""), ..reversed]
+    ["\\", "|", ..rest] -> _cells(rest, ["|", ..pending], reversed)
+    ["\\", "\\", ..rest] -> _cells(rest, ["\\", "\\", ..pending], reversed)
+    ["|", ..rest] -> _cells(
+      rest,
+      [],
+      [list.reverse(pending) |> string.join(""), ..reversed]
+    )
+    [char, ..rest] -> _cells(rest, [char, ..pending], reversed)
+  }
+}
+
+_alignment(source: String) -> Option(ast.Alignment) {
+  let value = text.trim(source)
+  let left = string.starts_with(value, ":")
+  let right = string.ends_with(value, ":")
+  let middle = value |> string.remove_prefix(":") |> string.remove_suffix(":")
+  match middle != "" && list.all(text.chars(middle), fn(char) { char == "-" }) {
+    False -> None
+    True -> Some(match #(left, right) {
+      #(True, True) -> ast.Alignment.Center
+      #(True, False) -> ast.Alignment.Left
+      #(False, True) -> ast.Alignment.Right
+      _ -> ast.Alignment.Default
+    })
+  }
+}

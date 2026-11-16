@@ -1,0 +1,63 @@
+// SPDX-License-Identifier: Apache-2.0
+
+module html_blocks_test
+
+import marksy
+import marksy/html
+import poke/should
+
+_preserve(source: String) -> String {
+  marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, False)
+  )
+}
+
+test "block tags continue through Markdown until a blank line" {
+  should.equal(
+    _preserve("<div>\n*owl*\n\nBird\n"),
+    "<div>\n*owl*\n<p>Bird</p>\n"
+  )
+}
+
+test "script style pre and textarea close on their matching end tag" {
+  should.equal(
+    _preserve("<SCRIPT>\n\n*owl*\n</sCrIpT>\nBird\n"),
+    "<SCRIPT>\n\n*owl*\n</sCrIpT>\n<p>Bird</p>\n"
+  )
+}
+
+test "comments processing instructions and CDATA have explicit endings" {
+  should.equal(
+    _preserve("<!-- owl\n\nbird -->\nAfter\n"),
+    "<!-- owl\n\nbird -->\n<p>After</p>\n"
+  )
+  should.equal(_preserve("<?owl\n?>\nAfter\n"), "<?owl\n?>\n<p>After</p>\n")
+  should.equal(
+    _preserve("<![CDATA[\n<owl>\n]]>\nAfter\n"),
+    "<![CDATA[\n<owl>\n]]>\n<p>After</p>\n"
+  )
+}
+
+test "a standalone inline tag cannot interrupt a paragraph" {
+  should.equal(_preserve("Bird\n<owl>\nMore\n"), "<p>Bird\n<owl>\nMore</p>\n")
+  should.equal(_preserve("<owl>\n*Bird*\n"), "<owl>\n*Bird*\n")
+}
+
+test "raw block policies escape preserve or omit the entire node" {
+  let document = marksy.parse("<div>\n<script>owl</script>\n</div>\n")
+  should.equal(
+    html.render(document),
+    "&lt;div&gt;\n&lt;script&gt;owl&lt;/script&gt;\n&lt;/div&gt;\n"
+  )
+  should.equal(
+    html.render_with(document, html.Options(html.RawHtml.Omit, False)),
+    ""
+  )
+}
+
+test "HTML comments separate otherwise matching lists" {
+  should.equal(
+    _preserve("- owl\n\n<!-- -->\n\n- bird\n"),
+    "<ul>\n<li>owl</li>\n</ul>\n<!-- -->\n<ul>\n<li>bird</li>\n</ul>\n"
+  )
+}

@@ -1,0 +1,167 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+// Cases from CommonMark 0.31.2. The upstream expected HTML is unchanged.
+// Skipped cases are known gaps, not accepted variations of the standard.
+module commonmark_thematic_breaks_test
+
+import marksy
+import marksy/html
+import poke/should
+
+test "CommonMark 43: Thematic breaks" {
+  let source = "***\n---\n___\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<hr />\n<hr />\n<hr />\n")
+}
+
+test "CommonMark 44: Thematic breaks" {
+  let source = "+++\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>+++</p>\n")
+}
+
+test "CommonMark 45: Thematic breaks" {
+  let source = "===\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>===</p>\n")
+}
+
+test "CommonMark 46: Thematic breaks" {
+  let source = "--\n**\n__\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>--\n**\n__</p>\n")
+}
+
+test "CommonMark 47: Thematic breaks" {
+  let source = " ***\n  ***\n   ***\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<hr />\n<hr />\n<hr />\n")
+}
+
+test "CommonMark 48: Thematic breaks" {
+  let source = "    ***\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<pre><code>***\n</code></pre>\n")
+}
+
+test "CommonMark 49: Thematic breaks" {
+  let source = "Foo\n    ***\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>Foo\n***</p>\n")
+}
+
+test "CommonMark 50: Thematic breaks" {
+  let source = "_____________________________________\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<hr />\n")
+}
+
+test "CommonMark 51: Thematic breaks" {
+  let source = " - - -\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<hr />\n")
+}
+
+test "CommonMark 52: Thematic breaks" {
+  let source = " **  * ** * ** * **\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<hr />\n")
+}
+
+test "CommonMark 53: Thematic breaks" {
+  let source = "-     -      -      -\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<hr />\n")
+}
+
+test "CommonMark 54: Thematic breaks" {
+  let source = "- - - -    \n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<hr />\n")
+}
+
+test "CommonMark 55: Thematic breaks" {
+  let source = "_ _ _ _ a\n\na------\n\n---a---\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>_ _ _ _ a</p>\n<p>a------</p>\n<p>---a---</p>\n")
+}
+
+test "CommonMark 56: Thematic breaks" {
+  let source = " *-*\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><em>-</em></p>\n")
+}
+
+test "CommonMark 57: Thematic breaks" {
+  let source = "- foo\n***\n- bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<ul>\n<li>foo</li>\n</ul>\n<hr />\n<ul>\n<li>bar</li>\n</ul>\n"
+  )
+}
+
+test "CommonMark 58: Thematic breaks" {
+  let source = "Foo\n***\nbar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>Foo</p>\n<hr />\n<p>bar</p>\n")
+}
+
+test "CommonMark 59: Thematic breaks" {
+  let source = "Foo\n---\nbar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<h2>Foo</h2>\n<p>bar</p>\n")
+}
+
+test "CommonMark 60: Thematic breaks" {
+  let source = "* Foo\n* * *\n* Bar\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<ul>\n<li>Foo</li>\n</ul>\n<hr />\n<ul>\n<li>Bar</li>\n</ul>\n"
+  )
+}
+
+test "CommonMark 61: Thematic breaks" {
+  let source = "- Foo\n- * * *\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<ul>\n<li>Foo</li>\n<li>\n<hr />\n</li>\n</ul>\n")
+}

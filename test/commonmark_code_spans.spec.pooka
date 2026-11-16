@@ -1,0 +1,188 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+// Cases from CommonMark 0.31.2. The upstream expected HTML is unchanged.
+// Skipped cases are known gaps, not accepted variations of the standard.
+module commonmark_code_spans_test
+
+import marksy
+import marksy/html
+import poke/should
+
+test "CommonMark 328: Code spans" {
+  let source = "`foo`\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><code>foo</code></p>\n")
+}
+
+test "CommonMark 329: Code spans" {
+  let source = "`` foo ` bar ``\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><code>foo ` bar</code></p>\n")
+}
+
+test "CommonMark 330: Code spans" {
+  let source = "` `` `\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><code>``</code></p>\n")
+}
+
+test "CommonMark 331: Code spans" {
+  let source = "`  ``  `\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><code> `` </code></p>\n")
+}
+
+test "CommonMark 332: Code spans" {
+  let source = "` a`\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><code> a</code></p>\n")
+}
+
+test "CommonMark 333: Code spans" {
+  let source = "` b `\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><code> b </code></p>\n")
+}
+
+test "CommonMark 334: Code spans" {
+  let source = "` `\n`  `\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><code> </code>\n<code>  </code></p>\n")
+}
+
+test "CommonMark 335: Code spans" {
+  let source = "``\nfoo\nbar  \nbaz\n``\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><code>foo bar   baz</code></p>\n")
+}
+
+test "CommonMark 336: Code spans" {
+  let source = "``\nfoo \n``\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><code>foo </code></p>\n")
+}
+
+test "CommonMark 337: Code spans" {
+  let source = "`foo   bar \nbaz`\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><code>foo   bar  baz</code></p>\n")
+}
+
+test "CommonMark 338: Code spans" {
+  let source = "`foo\\`bar`\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><code>foo\\</code>bar`</p>\n")
+}
+
+test "CommonMark 339: Code spans" {
+  let source = "``foo`bar``\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><code>foo`bar</code></p>\n")
+}
+
+test "CommonMark 340: Code spans" {
+  let source = "` foo `` bar `\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><code>foo `` bar</code></p>\n")
+}
+
+test "CommonMark 341: Code spans" {
+  let source = "*foo`*`\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>*foo<code>*</code></p>\n")
+}
+
+test "CommonMark 342: Code spans" {
+  let source = "[not a `link](/foo`)\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>[not a <code>link](/foo</code>)</p>\n")
+}
+
+test "CommonMark 343: Code spans" {
+  let source = "`<a href=\"`\">`\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><code>&lt;a href=&quot;</code>&quot;&gt;`</p>\n")
+}
+
+test "CommonMark 344: Code spans" {
+  let source = "<a href=\"`\">`\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a href=\"`\">`</p>\n")
+}
+
+test "CommonMark 345: Code spans" {
+  let source = "`<https://foo.bar.`baz>`\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><code>&lt;https://foo.bar.</code>baz&gt;`</p>\n")
+}
+
+test "CommonMark 346: Code spans" {
+  let source = "<https://foo.bar.`baz>`\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><a href=\"https://foo.bar.%60baz\">https://foo.bar.`baz</a>`</p>\n"
+  )
+}
+
+test "CommonMark 347: Code spans" {
+  let source = "```foo``\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>```foo``</p>\n")
+}
+
+test "CommonMark 348: Code spans" {
+  let source = "`foo\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>`foo</p>\n")
+}
+
+test "CommonMark 349: Code spans" {
+  let source = "`foo``bar``\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>`foo<code>bar</code></p>\n")
+}

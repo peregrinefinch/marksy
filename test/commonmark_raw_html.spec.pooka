@@ -1,0 +1,181 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+// Cases from CommonMark 0.31.2. The upstream expected HTML is unchanged.
+// Skipped cases are known gaps, not accepted variations of the standard.
+module commonmark_raw_html_test
+
+import marksy
+import marksy/html
+import poke/should
+
+test "CommonMark 613: Raw HTML" {
+  let source = "<a><bab><c2c>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a><bab><c2c></p>\n")
+}
+
+test "CommonMark 614: Raw HTML" {
+  let source = "<a/><b2/>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a/><b2/></p>\n")
+}
+
+test "CommonMark 615: Raw HTML" {
+  let source = "<a  /><b2\ndata=\"foo\" >\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p><a  /><b2\ndata=\"foo\" ></p>\n")
+}
+
+test "CommonMark 616: Raw HTML" {
+  let source = "<a foo=\"bar\" bam = 'baz <em>\"</em>'\n_boolean zoop:33=zoop:33 />\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p><a foo=\"bar\" bam = 'baz <em>\"</em>'\n_boolean zoop:33=zoop:33 /></p>\n"
+  )
+}
+
+test "CommonMark 617: Raw HTML" {
+  let source = "Foo <responsive-image src=\"foo.jpg\" />\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>Foo <responsive-image src=\"foo.jpg\" /></p>\n")
+}
+
+test "CommonMark 618: Raw HTML" {
+  let source = "<33> <__>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>&lt;33&gt; &lt;__&gt;</p>\n")
+}
+
+test "CommonMark 619: Raw HTML" {
+  let source = "<a h*#ref=\"hi\">\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>&lt;a h*#ref=&quot;hi&quot;&gt;</p>\n")
+}
+
+test "CommonMark 620: Raw HTML" {
+  let source = "<a href=\"hi'> <a href=hi'>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>&lt;a href=&quot;hi'&gt; &lt;a href=hi'&gt;</p>\n")
+}
+
+test "CommonMark 621: Raw HTML" {
+  let source = "< a><\nfoo><bar/ >\n<foo bar=baz\nbim!bop />\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p>&lt; a&gt;&lt;\nfoo&gt;&lt;bar/ &gt;\n&lt;foo bar=baz\nbim!bop /&gt;</p>\n"
+  )
+}
+
+test "CommonMark 622: Raw HTML" {
+  let source = "<a href='bar'title=title>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>&lt;a href='bar'title=title&gt;</p>\n")
+}
+
+test "CommonMark 623: Raw HTML" {
+  let source = "</a></foo >\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p></a></foo ></p>\n")
+}
+
+test "CommonMark 624: Raw HTML" {
+  let source = "</a href=\"foo\">\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>&lt;/a href=&quot;foo&quot;&gt;</p>\n")
+}
+
+test "CommonMark 625: Raw HTML" {
+  let source = "foo <!-- this is a --\ncomment - with hyphens -->\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p>foo <!-- this is a --\ncomment - with hyphens --></p>\n"
+  )
+}
+
+test "CommonMark 626: Raw HTML" {
+  let source = "foo <!--> foo -->\n\nfoo <!---> foo -->\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(
+    actual,
+    "<p>foo <!--> foo --&gt;</p>\n<p>foo <!---> foo --&gt;</p>\n"
+  )
+}
+
+test "CommonMark 627: Raw HTML" {
+  let source = "foo <?php echo $a; ?>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo <?php echo $a; ?></p>\n")
+}
+
+test "CommonMark 628: Raw HTML" {
+  let source = "foo <!ELEMENT br EMPTY>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo <!ELEMENT br EMPTY></p>\n")
+}
+
+test "CommonMark 629: Raw HTML" {
+  let source = "foo <![CDATA[>&<]]>\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo <![CDATA[>&<]]></p>\n")
+}
+
+test "CommonMark 630: Raw HTML" {
+  let source = "foo <a href=\"&ouml;\">\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo <a href=\"&ouml;\"></p>\n")
+}
+
+test "CommonMark 631: Raw HTML" {
+  let source = "foo <a href=\"\\*\">\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>foo <a href=\"\\*\"></p>\n")
+}
+
+test "CommonMark 632: Raw HTML" {
+  let source = "<a href=\"\\\"\">\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<p>&lt;a href=&quot;&quot;&quot;&gt;</p>\n")
+}

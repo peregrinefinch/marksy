@@ -1,0 +1,67 @@
+// SPDX-License-Identifier: Apache-2.0
+
+module delimiters_test
+
+import marksy
+import poke/should
+
+test "triple delimiters wrap strong emphasis inside emphasis" {
+  should.equal(
+    marksy.to_html("***owl***"),
+    "<p><em><strong>owl</strong></em></p>\n"
+  )
+}
+
+test "unmatched parts of delimiter runs remain literal" {
+  should.equal(marksy.to_html("**owl*"), "<p>*<em>owl</em></p>\n")
+}
+
+test "intraword asterisks and underscores follow different rules" {
+  should.equal(marksy.to_html("a*b*c a_b_c"), "<p>a<em>b</em>c a_b_c</p>\n")
+}
+
+test "Unicode punctuation participates in flanking classification" {
+  should.equal(marksy.to_html("«_owl_»"), "<p>«<em>owl</em>»</p>\n")
+}
+
+test "link labels isolate their emphasis delimiters" {
+  should.equal(
+    marksy.to_html("*[owl*](/bird)"),
+    "<p>*<a href=\"/bird\">owl*</a></p>\n"
+  )
+}
+
+test "nested links fall back without swallowing the inner destination" {
+  should.equal(
+    marksy.to_html("[bird [owl](/inner)](/outer)"),
+    "<p>[bird <a href=\"/inner\">owl</a>](/outer)</p>\n"
+  )
+}
+
+test "code spans and autolinks take precedence over closing label brackets" {
+  should.equal(
+    marksy.to_html("[owl`](/bird)`"),
+    "<p>[owl<code>](/bird)</code></p>\n"
+  )
+}
+
+test "multiline code spans preserve spaces before their line endings" {
+  should.equal(
+    marksy.to_html("``\nowl  \nbird\n``"),
+    "<p><code>owl   bird</code></p>\n"
+  )
+}
+
+test "a lazy quote continuation cannot become a setext underline" {
+  should.equal(
+    marksy.to_html("> owl\nbird\n===\n"),
+    "<blockquote>\n<p>owl\nbird\n===</p>\n</blockquote>\n"
+  )
+}
+
+test "fence languages decode escapes and named entities" {
+  should.equal(
+    marksy.to_html("``` owl\\+b&ouml;rd\nhello\n```\n"),
+    "<pre><code class=\"language-owl+börd\">hello\n</code></pre>\n"
+  )
+}

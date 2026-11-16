@@ -1,0 +1,51 @@
+// SPDX-License-Identifier: Apache-2.0
+
+//// Small tools shared by the two parsing passes. Work in Unicode scalar values
+//// when looking for ASCII punctuation, and keep original UTF-8 byte addresses
+//// in the line reader. A combining mark must not swallow a Markdown delimiter.
+module text
+
+import pooka/bit_array
+import pooka/list
+import pooka/string
+
+/// Split into scalar strings, including combining marks as separate entries.
+chars(value: String) -> List(String) {
+  _chars(bit_array.from_string(value), []) |> list.reverse()
+}
+
+_chars(bytes: BitArray, reversed: List(String)) -> List(String) {
+  match bytes {
+    <<>> -> reversed
+    <<point:utf8_codepoint, rest:bits>> -> {
+      let assert Ok(letter) = bit_array.to_string(<<point:utf8_codepoint>>)
+      _chars(rest, [letter, ..reversed])
+    }
+    _ -> panic ("a Pooka String contained invalid UTF-8")
+  }
+}
+
+/// Count identical characters at the head without scanning the remaining text.
+run(values: List(String), character: String) -> Int {
+  list.take_while(values, fn(value) { value == character }) |> list.length()
+}
+
+/// Markdown's ASCII whitespace is deliberately narrower than Unicode trim.
+space(value: String) -> Bool {
+  value == " " || value == "\t" || value == "\n" || value == "\r" || value == "\u{c}"
+}
+
+trim(value: String) -> String {
+  let letters = chars(value) |> list.drop_while(space) |> list.reverse() |> list.drop_while(
+    space
+  ) |> list.reverse()
+  string.join(letters, "")
+}
+
+/// Escape text and attribute delimiters in one pass over already split chunks.
+escape(value: String) -> String {
+  value |> string.replace("&", "&amp;") |> string.replace("<", "&lt;") |> string.replace(
+    ">",
+    "&gt;"
+  ) |> string.replace("\"", "&quot;")
+}

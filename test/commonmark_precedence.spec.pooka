@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+
+// Cases from CommonMark 0.31.2. The upstream expected HTML is unchanged.
+// Skipped cases are known gaps, not accepted variations of the standard.
+module commonmark_precedence_test
+
+import marksy
+import marksy/html
+import poke/should
+
+test "CommonMark 42: Precedence" {
+  let source = "- `one\n- two`\n"
+  let actual = marksy.parse(source) |> html.render_with(
+    html.Options(html.RawHtml.Preserve, True)
+  )
+  should.equal(actual, "<ul>\n<li>`one</li>\n<li>two`</li>\n</ul>\n")
+}

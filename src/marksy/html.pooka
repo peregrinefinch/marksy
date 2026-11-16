@@ -1,0 +1,271 @@
+// SPDX-License-Identifier: Apache-2.0
+
+//// Dress the syntax tree in HTML without asking it to parse itself again.
+//// Raw HTML and links have separate policies: escaping tags alone does not
+//// make a javascript link safe. Trusted publishing can preserve raw markup;
+//// the default leaves it visible as text.
+////
+//// ```pooka
+//// assert html.escape("<owl>") == "&lt;owl&gt;"
+//// ```
+module html
+
+import marksy/ast
+import marksy/text
+import pooka/int
+import pooka/list
+import pooka/string
+import pooka/uri
+
+enum RawHtml {
+  Escape
+  Preserve
+  Omit
+}
+
+class Options(raw_html: RawHtml, allow_unsafe_urls: Bool)
+
+/// Safe defaults for application rendering. CommonMark conformance uses an
+/// explicit Preserve policy because the specification includes raw HTML.
+defaults() -> Options {
+  Options(RawHtml.Escape, False)
+}
+
+escape(source: String) -> String {
+  text.escape(source)
+}
+
+/// Render with escaped raw HTML and restricted URL destinations.
+///
+/// ```pooka
+/// assert html.render(marksy.parse("# Owl")) == "<h1>Owl</h1>\n"
+/// ```
+render(document: ast.Document) -> String {
+  render_with(document, defaults())
+}
+
+/// Select HTML policy independently from the Markdown extensions.
+///
+/// ```pooka
+/// let policy = html.Options(html.RawHtml.Preserve, False)
+/// let page = marksy.parse("a <b>small</b> owl")
+/// assert html.render_with(page, policy) == "<p>a <b>small</b> owl</p>\n"
+/// ```
+render_with(document: ast.Document, options: Options) -> String {
+  list.map(document.blocks, fn(block) { _block(block, options) }) |> string.join(
+    ""
+  )
+}
+
+_block(block: ast.Block, options: Options) -> String {
+  match block {
+    ast.Paragraph(content, _) -> "<p>" + inlines(content, options) + "</p>\n"
+    ast.Heading(level, content, _) -> {
+      let tag = "h" + int.to_string(level)
+      "<" + tag + ">" + inlines(content, options) + "</" + tag + ">\n"
+    }
+    ast.ThematicBreak(_) -> "<hr />\n"
+    ast.CodeBlock(code, info, _) -> {
+      let language = string.split(info, " ") |> list.first()
+      let attribute = match language {
+        Some(value) if value != "" -> " class=\"language-" + escape(value) + "\""
+        _ -> ""
+      }
+      "<pre><code" + attribute + ">" + escape(code) + "</code></pre>\n"
+    }
+    ast.BlockQuote(blocks, _) -> "<blockquote>\n" + render_with(
+      ast.Document(blocks),
+      options
+    ) + "</blockquote>\n"
+    ast.ListBlock(ordered, start, tight, items, _) -> {
+      let tag = match ordered {
+        True -> "ol"
+        False -> "ul"
+      }
+      let attribute = match ordered && start != 1 {
+        True -> " start=\"" + int.to_string(start) + "\""
+        False -> ""
+      }
+      "<" + tag + attribute + ">\n" + (
+        list.map(items, fn(item) {
+          _item(item, tight, options)
+        }) |> string.join("")
+      ) + "</" + tag + ">\n"
+    }
+    ast.Table(alignments, header, rows, _) -> {
+      let head = "<thead>\n<tr>\n" + _cells(header, alignments, "th", options) + "</tr>\n</thead>\n"
+      let body = match rows {
+        [] -> ""
+        _ -> "<tbody>\n" + (
+          list.map(rows, fn(row) {
+            "<tr>\n" + _cells(row, alignments, "td", options) + "</tr>\n"
+          }) |> string.join("")
+        ) + "</tbody>\n"
+      }
+      "<table>\n" + head + body + "</table>\n"
+    }
+    ast.ReferenceDefinition(_, _, _, _) -> ""
+    ast.RawBlock(source, _) -> _raw(source, options)
+  }
+}
+
+inlines(content: List(ast.Inline), options: Options) -> String {
+  list.map(content, fn(node) { _inline(node, options) }) |> string.join("")
+}
+
+_inline(node: ast.Inline, options: Options) -> String {
+  match node {
+    ast.SourceInline(value) -> escape(value)
+    ast.Text(value) -> escape(value)
+    ast.Code(value) -> "<code>" + escape(value) + "</code>"
+    ast.SoftBreak() -> "\n"
+    ast.HardBreak() -> "<br />\n"
+    ast.Emphasis(content) -> "<em>" + inlines(content, options) + "</em>"
+    ast.Strikethrough(content) -> "<del>" + inlines(content, options) + "</del>"
+    ast.Strong(content) -> "<strong>" + inlines(content, options) + "</strong>"
+    ast.Link(content, destination, title) -> "<a href=\"" + escape(
+      _url(destination, options)
+    ) + "\"" + _title(title) + ">" + inlines(content, options) + "</a>"
+    ast.Image(description, destination, title) -> "<img src=\"" + escape(
+      _url(destination, options)
+    ) + "\" alt=\"" + escape(_plain(description)) + "\"" + _title(title) + " />"
+    ast.RawInline(value) -> _raw(value, options)
+  }
+}
+
+_title(value: String) -> String {
+  match value {
+    "" -> ""
+    _ -> " title=\"" + escape(value) + "\""
+  }
+}
+
+_raw(value: String, options: Options) -> String {
+  match options.raw_html {
+    RawHtml.Escape -> escape(value)
+    RawHtml.Preserve -> value
+    RawHtml.Omit -> ""
+  }
+}
+
+_plain(content: List(ast.Inline)) -> String {
+  list.map(content, fn(node) {
+    match node {
+      ast.SourceInline(value) -> value
+      ast.Text(value) -> value
+      ast.Code(value) -> value
+      ast.SoftBreak() -> "\n"
+      ast.HardBreak() -> "\n"
+      ast.Emphasis(children) -> _plain(children)
+      ast.Strong(children) -> _plain(children)
+      ast.Strikethrough(children) -> _plain(children)
+      ast.Link(children, _, _) -> _plain(children)
+      ast.Image(children, _, _) -> _plain(children)
+      ast.RawInline(value) -> value
+    }
+  }) |> string.join("")
+}
+
+_url(value: String, options: Options) -> String {
+  let compact = text.chars(value) |> list.filter(fn(char) {
+    match string.to_list(char) {
+      [point] -> point > 32 && point != 127
+      _ -> True
+    }
+  }) |> string.join("") |> string.lowercase()
+  match !options.allow_unsafe_urls && (
+    string.starts_with(compact, "javascript:") || string.starts_with(
+      compact,
+      "vbscript:"
+    ) || string.starts_with(compact, "data:")
+  ) {
+    True -> ""
+    False -> text.chars(value) |> list.map(fn(char) {
+      match string.contains(
+        "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789;/?:@&=+$,-_.!~*'()#%",
+        char
+      ) {
+        True -> char
+        False -> uri.percent_encode(char)
+      }
+    }) |> string.join("")
+  }
+}
+
+// Tight lists unwrap only their own item paragraphs. A nested list still owns
+// its own tightness, and block quotes keep their paragraph wrappers.
+_item(item: ast.ListItem, tight: Bool, options: Options) -> String {
+  let prefix = match item.blocks {
+    [] -> ""
+    [ast.Paragraph(_, _), .._rest] if tight -> ""
+    _ -> "\n"
+  }
+  let checkbox = match item.checked {
+    None -> ""
+    Some(True) -> "<input checked=\"\" disabled=\"\" type=\"checkbox\"> "
+    Some(False) -> "<input disabled=\"\" type=\"checkbox\"> "
+  }
+  "<li>" + prefix + _item_blocks(item.blocks, tight, options, checkbox) + "</li>\n"
+}
+
+_item_blocks(
+  blocks: List(ast.Block),
+  tight: Bool,
+  options: Options,
+  checkbox: String
+) -> String {
+  match blocks {
+    [] -> ""
+    [ast.Paragraph(content, _), ..rest] if tight -> {
+      let ending = match rest {
+        [] -> ""
+        _ -> "\n"
+      }
+      checkbox + inlines(content, options) + ending + _item_blocks(
+        rest,
+        tight,
+        options,
+        ""
+      )
+    }
+    [ast.Paragraph(content, _), ..rest] -> "<p>" + checkbox + inlines(
+      content,
+      options
+    ) + "</p>\n" + _item_blocks(rest, tight, options, "")
+    [block, ..rest] -> _block(block, options) + _item_blocks(
+      rest,
+      tight,
+      options,
+      ""
+    )
+  }
+}
+
+_cells(
+  cells: List(List(ast.Inline)),
+  alignments: List(ast.Alignment),
+  tag: String,
+  options: Options
+) -> String {
+  match #(cells, alignments) {
+    #([cell, ..rest], [alignment, ..after]) -> {
+      let value = match alignment {
+        ast.Alignment.Default -> ""
+        ast.Alignment.Left -> "left"
+        ast.Alignment.Center -> "center"
+        ast.Alignment.Right -> "right"
+      }
+      let attribute = match value {
+        "" -> ""
+        _ -> " align=\"" + value + "\""
+      }
+      "<" + tag + attribute + ">" + inlines(cell, options) + "</" + tag + ">\n" + _cells(
+        rest,
+        after,
+        tag,
+        options
+      )
+    }
+    _ -> ""
+  }
+}
