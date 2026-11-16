@@ -15,6 +15,8 @@ pooka add marksy
 ## Usage
 
 ```pooka
+module main
+
 import marksy
 
 main() {
