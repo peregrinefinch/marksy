@@ -1,2 +1,5 @@
-/build/
+/build
+*.beam
+*.ez
+erl_crash.dump
 .DS_Store
